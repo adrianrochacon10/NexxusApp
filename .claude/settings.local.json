@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"D:\\\\Proyectos\\\\NexxuzApp\\\\src\\\\app\\\\\\(dashboard\\)\\\\inventario\\\\categorias\\\\[id]\")"
+    ],
+    "additionalDirectories": [
+      "D:\\Proyectos\\NexxuzApp\\src\\app\\(dashboard)\\inventario\\categorias"
+    ]
+  }
+}

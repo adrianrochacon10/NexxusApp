@@ -2,16 +2,16 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Boxes, LayoutDashboard, LogOut, Menu, ReceiptText, Settings, X } from "lucide-react"
+import { Boxes, LayoutDashboard, LogOut, Menu, ReceiptText, ShoppingCart, X } from "lucide-react"
 import { useState } from "react"
 import { NexxusLogo } from "@/components/shared/NexxusLogo"
 import { cn } from "@/lib/utils"
 
 const navigation = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/inventario", label: "Inventario", icon: Boxes },
-  { href: "/finanzas", label: "Finanzas", icon: ReceiptText },
-  { href: "/finanzas/reportes", label: "Reportes", icon: BarChart3 },
+  { href: "/dashboard",  label: "Dashboard",  icon: LayoutDashboard },
+  { href: "/ventas",     label: "Ventas",      icon: ShoppingCart    },
+  { href: "/inventario", label: "Inventario",  icon: Boxes           },
+  { href: "/finanzas",   label: "Finanzas",    icon: ReceiptText     },
 ]
 
 export function Sidebar() {
@@ -29,7 +29,7 @@ export function Sidebar() {
           type="button"
           aria-label={open ? "Cerrar menu" : "Abrir menu"}
           aria-expanded={open}
-          onClick={() => setOpen((current) => !current)}
+          onClick={() => setOpen((v) => !v)}
         >
           {open ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
         </button>
@@ -40,7 +40,7 @@ export function Sidebar() {
           <NexxusLogo />
         </Link>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" aria-label="Navegación principal">
           {navigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
             const Icon = item.icon
@@ -49,10 +49,7 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn("button", isActive && "button-primary")}
-                style={{
-                  justifyContent: "flex-start",
-                  color: isActive ? "#0a0a0a" : "var(--text-secondary)",
-                }}
+                style={{ justifyContent: "flex-start", color: isActive ? "#0a0a0a" : "var(--text-secondary)" }}
                 onClick={() => setOpen(false)}
               >
                 <Icon size={17} aria-hidden="true" />
@@ -63,15 +60,16 @@ export function Sidebar() {
         </nav>
 
         <div className="sidebar-bottom">
-          <Link href="/settings" className="button" style={{ justifyContent: "flex-start", color: "var(--text-secondary)" }} onClick={() => setOpen(false)}>
-            <Settings size={17} aria-hidden="true" />
-            Ajustes
-          </Link>
-          <button className="button" style={{ justifyContent: "flex-start", color: "var(--text-secondary)" }}>
+          <div style={{ height: 1, background: "var(--border-subtle)", margin: "4px 0" }} aria-hidden="true" />
+          <Link
+            href="/login"
+            className="button"
+            style={{ justifyContent: "flex-start", color: "var(--text-secondary)" }}
+          >
             <LogOut size={17} aria-hidden="true" />
             Salir
-          </button>
-          <footer className="sidebar-footer">Nexxus</footer>
+          </Link>
+          <footer className="sidebar-footer">Nexxuz</footer>
         </div>
       </aside>
     </>

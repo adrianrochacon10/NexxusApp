@@ -5,8 +5,8 @@ export interface Categoria {
   id: string
   nombre: string
   tipo: "producto" | "gasto" | "ingreso"
-  icono?: string
   color?: string
+  atributosBase?: string[]
 }
 
 export interface Producto {
@@ -21,6 +21,7 @@ export interface Producto {
   imagenUrl?: string
   estatus: EstatusProducto
   sku: string
+  atributos?: Record<string, string | number>
   createdAt: string
 }
 

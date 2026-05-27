@@ -23,6 +23,47 @@
   --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ─── Tema light ──────────────────────────────────────────────────────────── */
+
+[data-theme="light"] {
+  --background: #f5f3ef;
+  --surface-1: #ffffff;
+  --surface-2: #f0ede8;
+  --surface-3: #e8e4de;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-active: rgba(0, 0, 0, 0.22);
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-tertiary: #aaaaaa;
+  --accent-gold: #b8942e;
+  --accent-gold-hover: #a07e22;
+  --accent-gold-subtle: rgba(184, 148, 46, 0.12);
+  --success: #2e7d52;
+  --error: #a03030;
+  --warning: #8a6020;
+  --info: #2e5090;
+  --premium-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] body {
+  background:
+    radial-gradient(circle at top left, rgba(184, 148, 46, 0.06), transparent 28rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.8), transparent 24rem),
+    var(--background);
+}
+
+[data-theme="light"] body::before {
+  opacity: 0.012;
+}
+
+[data-theme="light"] .sidebar {
+  background: rgba(245, 243, 239, 0.9);
+}
+
+[data-theme="light"] .button-primary {
+  color: #ffffff;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -79,6 +120,8 @@ button:disabled {
   outline-offset: 2px;
 }
 
+/* ─── Tipografía ──────────────────────────────────────────────────────────── */
+
 .font-display {
   font-family: var(--font-cormorant), "Cormorant Garamond", serif;
 }
@@ -87,11 +130,15 @@ button:disabled {
   font-family: var(--font-jetbrains), "JetBrains Mono", monospace;
 }
 
+/* ─── App shell ───────────────────────────────────────────────────────────── */
+
 .app-shell {
   display: grid;
   min-height: 100vh;
   grid-template-columns: 280px minmax(0, 1fr);
 }
+
+/* ─── Sidebar ─────────────────────────────────────────────────────────────── */
 
 .sidebar {
   position: sticky;
@@ -106,18 +153,18 @@ button:disabled {
 
 .sidebar-nav {
   display: grid;
-  gap: 8px;
-  margin-top: 34px;
+  gap: 6px;
+  margin-top: 32px;
 }
 
 .sidebar-bottom {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   margin-top: auto;
 }
 
 .sidebar-footer {
-  margin-top: 12px;
+  margin-top: 14px;
   color: var(--text-tertiary);
   font-family: var(--font-cormorant), "Cormorant Garamond", serif;
   font-size: 18px;
@@ -127,6 +174,45 @@ button:disabled {
 .mobile-nav-bar {
   display: none;
 }
+
+/* ─── Auth ────────────────────────────────────────────────────────────────── */
+
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 20px;
+}
+
+.auth-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: min(960px, 100%);
+  min-height: min(580px, 90vh);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--premium-shadow);
+}
+
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 40px 36px;
+  background: linear-gradient(145deg, rgba(201, 168, 76, 0.07), rgba(255, 255, 255, 0.01)), var(--surface-1);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.auth-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 36px;
+  background: var(--background);
+}
+
+/* ─── Layouts ─────────────────────────────────────────────────────────────── */
 
 .responsive-cluster {
   display: flex;
@@ -149,7 +235,7 @@ button:disabled {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.6fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.6fr);
   gap: 18px;
 }
 
@@ -188,8 +274,19 @@ button:disabled {
 .product-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
+
+/* POS — pantalla de nueva venta */
+.pos-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  height: calc(100vh - 190px);
+  min-height: 500px;
+}
+
+/* ─── Superficies ─────────────────────────────────────────────────────────── */
 
 .surface {
   border: 1px solid var(--border-subtle);
@@ -201,6 +298,8 @@ button:disabled {
 .elevated {
   background: var(--surface-2);
 }
+
+/* ─── Formularios ─────────────────────────────────────────────────────────── */
 
 .input {
   width: 100%;
@@ -219,6 +318,8 @@ button:disabled {
   outline: none;
 }
 
+/* ─── Botones ─────────────────────────────────────────────────────────────── */
+
 .button {
   display: inline-flex;
   min-height: 40px;
@@ -231,6 +332,7 @@ button:disabled {
   color: var(--text-primary);
   background: var(--surface-2);
   transition: all 180ms var(--ease-premium);
+  white-space: nowrap;
 }
 
 .button:hover {
@@ -248,21 +350,29 @@ button:disabled {
   background: var(--accent-gold-hover);
 }
 
+/* ─── Badges ──────────────────────────────────────────────────────────────── */
+
 .badge {
   display: inline-flex;
   align-items: center;
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: 3px 8px;
   font-size: 12px;
+  line-height: 1.4;
   color: var(--text-primary);
   background: var(--surface-3);
+  white-space: nowrap;
 }
+
+/* ─── Layout de página ────────────────────────────────────────────────────── */
 
 .page {
   width: min(1440px, 100%);
   margin: 0 auto;
   padding: 28px;
 }
+
+/* ─── Tablas ──────────────────────────────────────────────────────────────── */
 
 .table-wrap {
   overflow-x: auto;
@@ -286,6 +396,7 @@ th {
   font-size: 12px;
   font-weight: 500;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 td {
@@ -296,6 +407,8 @@ td {
 tr:hover td {
   background: rgba(255, 255, 255, 0.018);
 }
+
+/* ─── Responsive 920px ────────────────────────────────────────────────────── */
 
 @media (max-width: 920px) {
   .app-shell {
@@ -361,6 +474,14 @@ tr:hover td {
     padding: 10px 0 6px;
   }
 
+  .auth-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-brand {
+    display: none;
+  }
+
   .page {
     padding: 18px;
   }
@@ -383,10 +504,17 @@ tr:hover td {
   .report-grid,
   .product-detail-grid,
   .form-grid,
-  .category-grid {
+  .category-grid,
+  .pos-grid {
     grid-template-columns: 1fr !important;
   }
+
+  .pos-grid {
+    height: auto !important;
+  }
 }
+
+/* ─── Responsive 680px ────────────────────────────────────────────────────── */
 
 @media (max-width: 680px) {
   .product-card-grid,

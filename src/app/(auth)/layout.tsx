@@ -1,13 +1,8 @@
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+import type { ReactNode } from "react"
+
+export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <main
-      style={{
-        display: "grid",
-        minHeight: "100vh",
-        placeItems: "center",
-        padding: 20,
-      }}
-    >
+    <main className="auth-shell">
       {children}
     </main>
   )
