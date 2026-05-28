@@ -24,8 +24,6 @@ function varianteVacia(): VarianteFormData {
 }
 
 export function VariantesEditor({ variantes, onChange }: Props) {
-  const [usarTallasPreset, setUsarTallasPreset] = useState(false)
-
   function agregar() {
     onChange([...variantes, varianteVacia()])
   }

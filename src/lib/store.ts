@@ -123,7 +123,7 @@ function horaAhora() {
   return new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false })
 }
 
-function calcularEstatusVariante(stock: number, stockMinimo: number): ProductoVariante["estatus"] {
+function calcularEstatusVariante(stock: number): ProductoVariante["estatus"] {
   if (stock === 0) return "agotado"
   return "disponible"
 }
@@ -173,7 +173,7 @@ export const useStore = create<AppStore>()(
           atributos:   v.atributos,
           stock:       v.stock,
           stockMinimo: v.stockMinimo,
-          estatus:     calcularEstatusVariante(v.stock, v.stockMinimo),
+          estatus:     calcularEstatusVariante(v.stock),
         }))
 
         const tieneVariantes = variantesNuevas.length > 0
@@ -202,13 +202,14 @@ export const useStore = create<AppStore>()(
       },
 
       actualizarProducto(id, cambios) {
+        const { variantes: _v, ...cambiosSinVariantes } = cambios
         set((s) => ({
           productos: s.productos.map((p) => {
             if (p.id !== id) return p
             const categoria = cambios.categoriaId
               ? (s.categorias.find((c) => c.id === cambios.categoriaId) ?? p.categoria)
               : p.categoria
-            return { ...p, ...cambios, categoria }
+            return { ...p, ...cambiosSinVariantes, categoria }
           }),
         }))
       },
@@ -231,7 +232,7 @@ export const useStore = create<AppStore>()(
               atributos:   variante.atributos,
               stock:       variante.stock,
               stockMinimo: variante.stockMinimo,
-              estatus:     calcularEstatusVariante(variante.stock, variante.stockMinimo),
+              estatus:     calcularEstatusVariante(variante.stock),
             }
             const variantes = [...(p.variantes ?? []), nueva]
             return { ...p, variantes, stock: calcularStockProducto(variantes) }
@@ -246,7 +247,7 @@ export const useStore = create<AppStore>()(
             const variantes = (p.variantes ?? []).map((v) => {
               if (v.id !== varianteId) return v
               const updated = { ...v, ...cambios }
-              return { ...updated, estatus: calcularEstatusVariante(updated.stock, updated.stockMinimo) }
+              return { ...updated, estatus: calcularEstatusVariante(updated.stock) }
             })
             return { ...p, variantes, stock: calcularStockProducto(variantes) }
           }),

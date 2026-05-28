@@ -6,7 +6,7 @@ import { ArrowLeft, Ban, Plus, User } from "lucide-react"
 import Link from "next/link"
 import { Navbar } from "@/components/shared/Navbar"
 import { EstatusPagoBadge, EstatusOperativoBadge } from "@/components/ventas/EstatusPagoBadge"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import { useStore } from "@/lib/store"
 
 const FORMAS_PAGO_ABONO = [
@@ -17,7 +17,6 @@ const FORMAS_PAGO_ABONO = [
 
 export default function VentaDetallePage() {
   const { id } = useParams<{ id: string }>()
-  const router  = useRouter()
   const { ventas, registrarAbono, cancelarVenta } = useStore()
 
   const venta = ventas.find((v) => v.id === id)

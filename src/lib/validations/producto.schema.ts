@@ -21,7 +21,7 @@ export const productoSchema = z.object({
   imagenUrl:   z.string().url("URL inválida").optional().or(z.literal("")),
   estatus:     z.enum(["disponible", "pausado", "agotado"]),
   atributos:   z.record(z.string(), z.string()).optional(),
-  variantes:   z.array(varianteSchema).optional().default([]),
+  variantes:   z.array(varianteSchema).default([]),
 })
 
 export const stockSchema = z.object({
