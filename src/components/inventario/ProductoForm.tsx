@@ -9,8 +9,10 @@ import { productoSchema, type ProductoInput } from "@/lib/validations/producto.s
 import { VariantesEditor, type VarianteFormData } from "@/components/inventario/VariantesEditor"
 import { useStore } from "@/lib/store"
 
+type ProductoFormDefaults = Omit<Partial<ProductoInput>, "variantes">
+
 interface ProductoFormProps {
-  defaultValues?: Partial<ProductoInput>
+  defaultValues?: ProductoFormDefaults
 }
 
 function generarSku(categoriaId: string, categorias: { id: string; nombre: string }[]): string {
@@ -23,16 +25,7 @@ function generarSku(categoriaId: string, categorias: { id: string; nombre: strin
 export function ProductoForm({ defaultValues }: ProductoFormProps) {
   const router = useRouter()
   const [guardado, setGuardado]   = useState(false)
-  const [variantes, setVariantes] = useState<VarianteFormData[]>(
-    (defaultValues?.variantes ?? []).map((v) => ({
-      id:          v.id,
-      nombre:      v.nombre,
-      sku:         v.sku ?? "",
-      stock:       v.stock,
-      stockMinimo: v.stockMinimo,
-      atributos:   v.atributos ?? {},
-    }))
-  )
+  const [variantes, setVariantes] = useState<VarianteFormData[]>([])
 
   const { categorias, crearProducto } = useStore()
   const categoriasProducto = categorias.filter((c) => c.tipo === "producto")
@@ -43,8 +36,8 @@ export function ProductoForm({ defaultValues }: ProductoFormProps) {
     watch,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<ProductoInput>({
-    resolver: zodResolver(productoSchema),
+  } = useForm<ProductoInput, unknown, ProductoInput>({
+    resolver: zodResolver(productoSchema) as never,
     defaultValues: {
       nombre:      "",
       sku:         "",
@@ -57,7 +50,6 @@ export function ProductoForm({ defaultValues }: ProductoFormProps) {
       estatus:     "disponible",
       imagenUrl:   "",
       atributos:   {},
-      variantes:   [],
       ...defaultValues,
     },
   })

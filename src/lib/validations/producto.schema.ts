@@ -9,6 +9,7 @@ export const varianteSchema = z.object({
   stockMinimo: z.coerce.number().int().min(0, "El stock mínimo no puede ser negativo"),
 })
 
+// variantes se manejan fuera del form con useState — no van en este schema
 export const productoSchema = z.object({
   nombre:      z.string().min(2, "El nombre es requerido").max(120),
   sku:         z.string().min(2, "El SKU es requerido").max(60),
@@ -21,7 +22,6 @@ export const productoSchema = z.object({
   imagenUrl:   z.string().url("URL inválida").optional().or(z.literal("")),
   estatus:     z.enum(["disponible", "pausado", "agotado"]),
   atributos:   z.record(z.string(), z.string()).optional(),
-  variantes:   z.array(varianteSchema).optional(),
 })
 
 export const stockSchema = z.object({

@@ -87,6 +87,7 @@ export interface Database {
           logo_url: string | null
           plan: "free" | "pro" | "enterprise"
           created_at: string
+          updated_at: string
         },
         {
           id: string
@@ -95,6 +96,14 @@ export interface Database {
           logo_url?: string | null
           plan?: "free" | "pro" | "enterprise"
           created_at?: string
+          updated_at?: string
+        },
+        {
+          nombre?: string | null
+          empresa?: string | null
+          logo_url?: string | null
+          plan?: "free" | "pro" | "enterprise"
+          updated_at?: string
         }
       >
       categorias: Table<
@@ -106,7 +115,9 @@ export interface Database {
           tipo: "producto" | "gasto" | "ingreso"
           icono: string | null
           color: string | null
+          atributos_base: string[]
           created_at: string
+          updated_at: string
         },
         {
           id?: string
@@ -116,7 +127,17 @@ export interface Database {
           tipo: "producto" | "gasto" | "ingreso"
           icono?: string | null
           color?: string | null
+          atributos_base?: string[]
           created_at?: string
+          updated_at?: string
+        },
+        {
+          nombre?: string
+          tipo?: "producto" | "gasto" | "ingreso"
+          icono?: string | null
+          color?: string | null
+          atributos_base?: string[]
+          updated_at?: string
         }
       >
       productos: Table<
@@ -134,6 +155,7 @@ export interface Database {
           imagen_url: string | null
           estatus: "disponible" | "pausado" | "agotado"
           sku: string | null
+          atributos: Json
           created_at: string
           updated_at: string
         },
@@ -151,6 +173,7 @@ export interface Database {
           imagen_url?: string | null
           estatus?: "disponible" | "pausado" | "agotado"
           sku?: string | null
+          atributos?: Json
           created_at?: string
           updated_at?: string
         },
@@ -166,6 +189,44 @@ export interface Database {
           imagen_url?: string | null
           estatus?: "disponible" | "pausado" | "agotado"
           sku?: string | null
+          atributos?: Json
+          updated_at?: string
+        }
+      >
+      producto_variantes: Table<
+        {
+          id: string
+          business_id: string | null
+          producto_id: string
+          nombre: string
+          sku: string | null
+          atributos: Json
+          stock: number
+          stock_minimo: number
+          estatus: "disponible" | "pausado" | "agotado"
+          created_at: string
+          updated_at: string
+        },
+        {
+          id?: string
+          business_id?: string | null
+          producto_id: string
+          nombre: string
+          sku?: string | null
+          atributos?: Json
+          stock?: number
+          stock_minimo?: number
+          estatus?: "disponible" | "pausado" | "agotado"
+          created_at?: string
+          updated_at?: string
+        },
+        {
+          nombre?: string
+          sku?: string | null
+          atributos?: Json
+          stock?: number
+          stock_minimo?: number
+          estatus?: "disponible" | "pausado" | "agotado"
           updated_at?: string
         }
       >
@@ -174,23 +235,140 @@ export interface Database {
           id: string
           business_id: string | null
           producto_id: string
+          variante_id: string | null
           user_id: string
-          tipo: "entrada" | "salida" | "ajuste"
+          tipo: "entrada" | "salida" | "ajuste" | "venta" | "cancelacion"
           cantidad: number
           stock_antes: number
           stock_despues: number
           notas: string | null
+          referencia_tipo: string | null
+          referencia_id: string | null
           created_at: string
         },
         {
           id?: string
           business_id?: string | null
           producto_id: string
+          variante_id?: string | null
           user_id: string
-          tipo: "entrada" | "salida" | "ajuste"
+          tipo: "entrada" | "salida" | "ajuste" | "venta" | "cancelacion"
           cantidad: number
           stock_antes: number
           stock_despues: number
+          notas?: string | null
+          referencia_tipo?: string | null
+          referencia_id?: string | null
+          created_at?: string
+        }
+      >
+      ventas: Table<
+        {
+          id: string
+          business_id: string | null
+          user_id: string
+          folio: string
+          fecha: string
+          hora: string
+          subtotal: number
+          descuento: number
+          total: number
+          monto_pagado: number
+          saldo_pendiente: number
+          forma_pago_inicial: "efectivo" | "transferencia" | "adeudo" | "tarjeta" | null
+          estado_pago: "pagada" | "parcial" | "pendiente"
+          estatus: "activa" | "cancelada"
+          cliente_nombre: string | null
+          cliente_telefono: string | null
+          notas: string | null
+          cancelada_at: string | null
+          cancelada_por: string | null
+          motivo_cancelacion: string | null
+          created_at: string
+          updated_at: string
+        },
+        {
+          id?: string
+          business_id?: string | null
+          user_id: string
+          folio: string
+          fecha?: string
+          hora?: string
+          subtotal?: number
+          descuento?: number
+          total: number
+          monto_pagado?: number
+          saldo_pendiente?: number
+          forma_pago_inicial?: "efectivo" | "transferencia" | "adeudo" | "tarjeta" | null
+          estado_pago?: "pagada" | "parcial" | "pendiente"
+          estatus?: "activa" | "cancelada"
+          cliente_nombre?: string | null
+          cliente_telefono?: string | null
+          notas?: string | null
+          cancelada_at?: string | null
+          cancelada_por?: string | null
+          motivo_cancelacion?: string | null
+          created_at?: string
+          updated_at?: string
+        },
+        {
+          monto_pagado?: number
+          saldo_pendiente?: number
+          estado_pago?: "pagada" | "parcial" | "pendiente"
+          estatus?: "activa" | "cancelada"
+          notas?: string | null
+          cancelada_at?: string | null
+          cancelada_por?: string | null
+          motivo_cancelacion?: string | null
+          updated_at?: string
+        }
+      >
+      venta_lineas: Table<
+        {
+          id: string
+          business_id: string | null
+          venta_id: string
+          producto_id: string
+          variante_id: string | null
+          producto_nombre: string
+          variante_nombre: string | null
+          cantidad: number
+          precio_unitario: number
+          subtotal: number
+          created_at: string
+        },
+        {
+          id?: string
+          business_id?: string | null
+          venta_id: string
+          producto_id: string
+          variante_id?: string | null
+          producto_nombre: string
+          variante_nombre?: string | null
+          cantidad: number
+          precio_unitario: number
+          subtotal: number
+          created_at?: string
+        }
+      >
+      venta_pagos: Table<
+        {
+          id: string
+          business_id: string | null
+          venta_id: string
+          user_id: string
+          monto: number
+          forma_pago: "efectivo" | "transferencia" | "tarjeta"
+          notas: string | null
+          created_at: string
+        },
+        {
+          id?: string
+          business_id?: string | null
+          venta_id: string
+          user_id: string
+          monto: number
+          forma_pago: "efectivo" | "transferencia" | "tarjeta"
           notas?: string | null
           created_at?: string
         }
@@ -208,6 +386,8 @@ export interface Database {
           monto: number
           tipo: "ingreso" | "gasto" | "transferencia"
           producto_id: string | null
+          venta_id: string | null
+          venta_pago_id: string | null
           notas: string | null
           created_at: string
         },
@@ -223,6 +403,8 @@ export interface Database {
           monto: number
           tipo: "ingreso" | "gasto" | "transferencia"
           producto_id?: string | null
+          venta_id?: string | null
+          venta_pago_id?: string | null
           notas?: string | null
           created_at?: string
         }

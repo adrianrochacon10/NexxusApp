@@ -35,6 +35,7 @@ Durante la migracion, `business_id` queda nullable para no romper datos existent
 ## Archivos agregados
 
 - `supabase/migrations/202605270001_team_business_model.sql`
+- `supabase/migrations/202605280001_production_app_schema.sql`
 - `src/server/auth/require-user.ts`
 - `src/server/business/business-context.ts`
 - `src/server/errors/app-error.ts`
