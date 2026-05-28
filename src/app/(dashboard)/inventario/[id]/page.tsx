@@ -1,19 +1,26 @@
+"use client"
+
 import Image from "next/image"
+import { useParams } from "next/navigation"
 import { notFound } from "next/navigation"
 import { DataTable } from "@/components/shared/DataTable"
 import { Navbar } from "@/components/shared/Navbar"
 import { StockActualizador } from "@/components/inventario/StockActualizador"
 import { EstatusBadge } from "@/components/inventario/EstatusBadge"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { movimientosStock, productos } from "@/lib/demo-data"
+import { movimientosStock } from "@/lib/demo-data"
+import { useStore } from "@/lib/store"
 import type { MovimientoStock } from "@/types/inventario.types"
 
-export default async function ProductoDetallePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const producto = productos.find((p) => p.id === id)
+export default function ProductoDetallePage() {
+  const { id }    = useParams<{ id: string }>()
+  const productos = useStore((s) => s.productos)
+  const producto  = productos.find((p) => p.id === id)
+
   if (!producto) notFound()
 
-  const movimientos = movimientosStock.filter((m) => m.productoId === producto.id)
+  const movimientos   = movimientosStock.filter((m) => m.productoId === producto.id)
+  const tieneVariantes = (producto.variantes?.length ?? 0) > 0
 
   return (
     <>
@@ -43,9 +50,9 @@ export default async function ProductoDetallePage({ params }: { params: Promise<
             )}
 
             <div className="metric-grid">
-              <Metric label="Stock actual"  value={String(producto.stock)}           warn={producto.stock <= producto.stockMinimo} />
-              <Metric label="Stock mínimo"  value={String(producto.stockMinimo)} />
-              <Metric label="Precio venta"  value={formatCurrency(producto.precioVenta)} />
+              <Metric label="Stock total"  value={String(producto.stock)}          warn={producto.stock <= producto.stockMinimo} />
+              <Metric label="Stock mínimo" value={String(producto.stockMinimo)} />
+              <Metric label="Precio venta" value={formatCurrency(producto.precioVenta)} />
             </div>
 
             {producto.atributos && Object.keys(producto.atributos).length > 0 && (
@@ -67,6 +74,44 @@ export default async function ProductoDetallePage({ params }: { params: Promise<
 
           <StockActualizador productoId={producto.id} />
         </section>
+
+        {/* Variantes */}
+        {tieneVariantes && (
+          <section className="surface" style={{ padding: 20, display: "grid", gap: 14 }}>
+            <h2 className="font-display" style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>Variantes</h2>
+            <div style={{ display: "grid", gap: 8 }}>
+              {/* Header */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 80px 80px 100px", gap: 12, padding: "0 8px", fontSize: 11, color: "var(--text-secondary)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span>Talla / Variante</span>
+                <span>SKU</span>
+                <span>Stock</span>
+                <span>Mínimo</span>
+                <span>Estatus</span>
+              </div>
+              {producto.variantes!.map((v) => (
+                <div
+                  key={v.id}
+                  style={{
+                    display: "grid", gridTemplateColumns: "1fr 120px 80px 80px 100px", gap: 12,
+                    alignItems: "center", padding: "10px 8px", borderRadius: 6,
+                    background: "var(--surface-3)", border: "1px solid var(--border-subtle)",
+                  }}
+                >
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>{v.nombre}</span>
+                  <span className="font-mono" style={{ fontSize: 11, color: "var(--text-secondary)" }}>{v.sku ?? "—"}</span>
+                  <span
+                    className="font-mono"
+                    style={{ fontSize: 14, color: v.stock === 0 ? "var(--error)" : v.stock <= v.stockMinimo ? "var(--warning)" : undefined }}
+                  >
+                    {v.stock}
+                  </span>
+                  <span className="font-mono" style={{ fontSize: 14, color: "var(--text-secondary)" }}>{v.stockMinimo}</span>
+                  <EstatusBadge estatus={v.estatus} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <DataTable<MovimientoStock>
           data={movimientos}

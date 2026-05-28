@@ -33,3 +33,10 @@ Copia `.env.example` a `.env.local` y completa:
 - Inventario: tabla, formulario crear/editar, detalle e historial de movimientos.
 - Finanzas: transacciones, formulario de registro y reportes por categoria.
 
+## Backend y arquitectura
+
+- Modelo compartido por negocio/equipo: `docs/backend-negocio-compartido.md`.
+- Migracion inicial Supabase: `supabase/migrations/202605270001_team_business_model.sql`.
+- Prompts para el agente frontend: `docs/prompts-frontend.md`.
+- Mejoras futuras priorizadas: `docs/mejoras-futuras.md`.
+

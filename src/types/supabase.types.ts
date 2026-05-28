@@ -28,6 +28,57 @@ export interface Database {
   public: {
     Tables: {
       [key: string]: GenericSupabaseTable
+      businesses: Table<
+        {
+          id: string
+          name: string
+          slug: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        },
+        {
+          id?: string
+          name: string
+          slug?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        },
+        {
+          name?: string
+          slug?: string | null
+          updated_at?: string
+        }
+      >
+      business_memberships: Table<
+        {
+          id: string
+          business_id: string
+          user_id: string
+          role: "admin"
+          status: "active" | "invited" | "disabled"
+          invited_by: string | null
+          joined_at: string | null
+          created_at: string
+        },
+        {
+          id?: string
+          business_id: string
+          user_id: string
+          role?: "admin"
+          status?: "active" | "invited" | "disabled"
+          invited_by?: string | null
+          joined_at?: string | null
+          created_at?: string
+        },
+        {
+          role?: "admin"
+          status?: "active" | "invited" | "disabled"
+          invited_by?: string | null
+          joined_at?: string | null
+        }
+      >
       perfiles: Table<
         {
           id: string
@@ -49,6 +100,7 @@ export interface Database {
       categorias: Table<
         {
           id: string
+          business_id: string | null
           user_id: string
           nombre: string
           tipo: "producto" | "gasto" | "ingreso"
@@ -58,6 +110,7 @@ export interface Database {
         },
         {
           id?: string
+          business_id?: string | null
           user_id: string
           nombre: string
           tipo: "producto" | "gasto" | "ingreso"
@@ -69,6 +122,7 @@ export interface Database {
       productos: Table<
         {
           id: string
+          business_id: string | null
           user_id: string
           nombre: string
           descripcion: string | null
@@ -85,6 +139,7 @@ export interface Database {
         },
         {
           id?: string
+          business_id?: string | null
           user_id: string
           nombre: string
           descripcion?: string | null
@@ -100,6 +155,7 @@ export interface Database {
           updated_at?: string
         },
         {
+          business_id?: string | null
           nombre?: string
           descripcion?: string | null
           categoria_id?: string | null
@@ -116,6 +172,7 @@ export interface Database {
       movimientos_stock: Table<
         {
           id: string
+          business_id: string | null
           producto_id: string
           user_id: string
           tipo: "entrada" | "salida" | "ajuste"
@@ -127,6 +184,7 @@ export interface Database {
         },
         {
           id?: string
+          business_id?: string | null
           producto_id: string
           user_id: string
           tipo: "entrada" | "salida" | "ajuste"
@@ -140,6 +198,7 @@ export interface Database {
       transacciones: Table<
         {
           id: string
+          business_id: string | null
           user_id: string
           fecha: string
           concepto: string
@@ -154,6 +213,7 @@ export interface Database {
         },
         {
           id?: string
+          business_id?: string | null
           user_id: string
           fecha?: string
           concepto: string

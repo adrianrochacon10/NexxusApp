@@ -1,5 +1,14 @@
 import { z } from "zod"
 
+export const varianteSchema = z.object({
+  id:          z.string().optional(),
+  nombre:      z.string().min(1, "El nombre de la variante es requerido"),
+  sku:         z.string().optional().or(z.literal("")),
+  atributos:   z.record(z.string(), z.string()).optional().default({}),
+  stock:       z.coerce.number().int().min(0, "El stock no puede ser negativo"),
+  stockMinimo: z.coerce.number().int().min(0, "El stock mínimo no puede ser negativo"),
+})
+
 export const productoSchema = z.object({
   nombre:      z.string().min(2, "El nombre es requerido").max(120),
   sku:         z.string().min(2, "El SKU es requerido").max(60),
@@ -12,6 +21,7 @@ export const productoSchema = z.object({
   imagenUrl:   z.string().url("URL inválida").optional().or(z.literal("")),
   estatus:     z.enum(["disponible", "pausado", "agotado"]),
   atributos:   z.record(z.string(), z.string()).optional(),
+  variantes:   z.array(varianteSchema).optional().default([]),
 })
 
 export const stockSchema = z.object({
@@ -22,4 +32,5 @@ export const stockSchema = z.object({
 })
 
 export type ProductoInput = z.infer<typeof productoSchema>
+export type VarianteInput = z.infer<typeof varianteSchema>
 export type StockInput    = z.infer<typeof stockSchema>

@@ -9,6 +9,17 @@ export interface Categoria {
   atributosBase?: string[]
 }
 
+export interface ProductoVariante {
+  id: string
+  productoId: string
+  nombre: string
+  sku?: string
+  atributos: Record<string, string>
+  stock: number
+  stockMinimo: number
+  estatus: EstatusProducto
+}
+
 export interface Producto {
   id: string
   nombre: string
@@ -22,12 +33,14 @@ export interface Producto {
   estatus: EstatusProducto
   sku: string
   atributos?: Record<string, string | number>
+  variantes?: ProductoVariante[]
   createdAt: string
 }
 
 export interface MovimientoStock {
   id: string
   productoId: string
+  varianteId?: string
   tipo: TipoMovimientoStock
   cantidad: number
   stockAntes: number
