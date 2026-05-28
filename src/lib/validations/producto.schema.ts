@@ -4,7 +4,7 @@ export const varianteSchema = z.object({
   id:          z.string().optional(),
   nombre:      z.string().min(1, "El nombre de la variante es requerido"),
   sku:         z.string().optional().or(z.literal("")),
-  atributos:   z.record(z.string(), z.string()).optional().default({}),
+  atributos:   z.record(z.string(), z.string()).optional(),
   stock:       z.coerce.number().int().min(0, "El stock no puede ser negativo"),
   stockMinimo: z.coerce.number().int().min(0, "El stock mínimo no puede ser negativo"),
 })
@@ -21,7 +21,7 @@ export const productoSchema = z.object({
   imagenUrl:   z.string().url("URL inválida").optional().or(z.literal("")),
   estatus:     z.enum(["disponible", "pausado", "agotado"]),
   atributos:   z.record(z.string(), z.string()).optional(),
-  variantes:   z.array(varianteSchema).default([]),
+  variantes:   z.array(varianteSchema).optional(),
 })
 
 export const stockSchema = z.object({
