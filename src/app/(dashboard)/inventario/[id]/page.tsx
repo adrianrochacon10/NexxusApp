@@ -1,8 +1,12 @@
 import Image from "next/image"
+import Link from "next/link"
 import { notFound } from "next/navigation"
+import { ArrowLeft, Edit } from "lucide-react"
 import { DataTable } from "@/components/shared/DataTable"
 import { Navbar } from "@/components/shared/Navbar"
 import { StockActualizador } from "@/components/inventario/StockActualizador"
+import { VariantesStockInline } from "@/components/inventario/VariantesStockInline"
+import { ProductoAcciones } from "@/components/inventario/ProductoAcciones"
 import { EstatusBadge } from "@/components/inventario/EstatusBadge"
 import { formatCurrency } from "@/lib/utils"
 import { requireBusinessContext } from "@/server/business/business-context"
@@ -43,6 +47,17 @@ export default async function ProductoDetallePage({ params }: { params: Promise<
     <>
       <Navbar title={producto.nombre} subtitle="Detalle operativo, atributos, stock e historial de movimientos." />
       <div className="page" style={{ display: "grid", gap: 18 }}>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <Link href="/inventario" className="button" style={{ padding: "0 14px" }}>
+            <ArrowLeft size={16} aria-hidden="true" />
+            Inventario
+          </Link>
+          <Link href={`/inventario/${id}/editar`} className="button">
+            <Edit size={15} aria-hidden="true" />
+            Editar producto
+          </Link>
+        </div>
 
         <section className="surface product-detail-grid">
           {producto.imagen_url ? (
@@ -89,26 +104,29 @@ export default async function ProductoDetallePage({ params }: { params: Promise<
             )}
           </div>
 
-          <StockActualizador productoId={producto.id} />
+          <div style={{ display: "grid", gap: 14, alignContent: "start" }}>
+            {!tieneVariantes && <StockActualizador productoId={producto.id} />}
+            <ProductoAcciones
+              productoId={producto.id}
+              estatusActual={producto.estatus as "disponible" | "pausado" | "agotado"}
+            />
+          </div>
         </section>
 
         {tieneVariantes && (
           <section className="surface" style={{ padding: 20, display: "grid", gap: 14 }}>
             <h2 className="font-display" style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>Variantes</h2>
-            <div style={{ display: "grid", gap: 8 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 80px 80px 100px", gap: 12, padding: "0 8px", fontSize: 11, color: "var(--text-secondary)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                <span>Talla / Variante</span><span>SKU</span><span>Stock</span><span>Mínimo</span><span>Estatus</span>
-              </div>
-              {variantes!.map((v) => (
-                <div key={v.id} style={{ display: "grid", gridTemplateColumns: "1fr 120px 80px 80px 100px", gap: 12, alignItems: "center", padding: "10px 8px", borderRadius: 6, background: "var(--surface-3)", border: "1px solid var(--border-subtle)" }}>
-                  <span style={{ fontSize: 14, fontWeight: 500 }}>{v.nombre}</span>
-                  <span className="font-mono" style={{ fontSize: 11, color: "var(--text-secondary)" }}>{v.sku ?? "—"}</span>
-                  <span className="font-mono" style={{ fontSize: 14, color: v.stock === 0 ? "var(--error)" : v.stock <= v.stock_minimo ? "var(--warning)" : undefined }}>{v.stock}</span>
-                  <span className="font-mono" style={{ fontSize: 14, color: "var(--text-secondary)" }}>{v.stock_minimo}</span>
-                  <EstatusBadge estatus={v.estatus as "disponible" | "pausado" | "agotado"} />
-                </div>
-              ))}
-            </div>
+            <VariantesStockInline
+              productoId={producto.id}
+              variantes={variantes!.map((v) => ({
+                id:           v.id,
+                nombre:       v.nombre,
+                sku:          v.sku,
+                stock:        v.stock,
+                stock_minimo: v.stock_minimo,
+                estatus:      v.estatus,
+              }))}
+            />
           </section>
         )}
 

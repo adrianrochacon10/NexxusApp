@@ -56,7 +56,7 @@ export default async function CategoriaDetallePage({ params }: { params: Promise
               )}
             </div>
           </div>
-          <Link href="/inventario/nuevo" className="button button-primary">
+          <Link href={`/inventario/nuevo?cat=${id}`} className="button button-primary">
             <Plus size={17} aria-hidden="true" />
             Nuevo producto
           </Link>
@@ -65,7 +65,7 @@ export default async function CategoriaDetallePage({ params }: { params: Promise
         {prods.length === 0 ? (
           <article className="surface" style={{ padding: 32, textAlign: "center", display: "grid", gap: 12, justifyItems: "center" }}>
             <p style={{ margin: 0, color: "var(--text-secondary)" }}>Esta categoría aún no tiene productos.</p>
-            <Link href="/inventario/nuevo" className="button button-primary" style={{ width: "fit-content" }}>
+            <Link href={`/inventario/nuevo?cat=${id}`} className="button button-primary" style={{ width: "fit-content" }}>
               <Plus size={17} aria-hidden="true" />
               Agregar producto
             </Link>

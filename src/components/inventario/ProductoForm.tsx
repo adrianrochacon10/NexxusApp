@@ -1,24 +1,30 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Save, Sparkles } from "lucide-react"
+import Image from "next/image"
+import { Save, Sparkles, Upload, X } from "lucide-react"
+import { generarURLFirmaSubida } from "@/actions/imagenes"
 import { productoSchema, type ProductoInput } from "@/lib/validations/producto.schema"
 import { VariantesEditor, type VarianteFormData } from "@/components/inventario/VariantesEditor"
-import { crearProducto } from "@/actions/inventario"
+import { crearProducto, actualizarProducto } from "@/actions/inventario"
 
 type ProductoFormDefaults = Omit<Partial<ProductoInput>, "variantes">
 
 export interface CategoriaOption {
-  id:            string
-  nombre:        string
+  id:             string
+  nombre:         string
+  color?:         string | null
   atributos_base: string[]
 }
 
 interface ProductoFormProps {
-  defaultValues?: ProductoFormDefaults
-  categorias:    CategoriaOption[]
+  defaultValues?:      ProductoFormDefaults
+  categorias:          CategoriaOption[]
+  categoriaFija?:      string
+  productoId?:         string
+  variantesIniciales?: VarianteFormData[]
 }
 
 function generarSku(categoriaId: string, categorias: { id: string; nombre: string }[]): string {
@@ -28,9 +34,13 @@ function generarSku(categoriaId: string, categorias: { id: string; nombre: strin
   return `${prefix}-${rand}`
 }
 
-export function ProductoForm({ defaultValues, categorias }: ProductoFormProps) {
-  const [guardado,  setGuardado]  = useState(false)
-  const [variantes, setVariantes] = useState<VarianteFormData[]>([])
+export function ProductoForm({ defaultValues, categorias, categoriaFija, productoId, variantesIniciales }: ProductoFormProps) {
+  const [guardado,     setGuardado]     = useState(false)
+  const [variantes,    setVariantes]    = useState<VarianteFormData[]>(variantesIniciales ?? [])
+  const prevCategoriaId                = useRef<string | undefined>(defaultValues?.categoriaId)
+  const [subiendo,     setSubiendo]     = useState(false)
+  const [errorImagen,  setErrorImagen]  = useState("")
+  const [preview,      setPreview]      = useState<string | null>(null)
 
   const categoriasProducto = categorias
 
@@ -66,8 +76,16 @@ export function ProductoForm({ defaultValues, categorias }: ProductoFormProps) {
   const atributosBase   = categoriaActual?.atributos_base ?? []
   const tieneVariantes  = variantes.length > 0
 
-  // Limpiar atributos al cambiar de categoría
+  // Preview inicial cuando se edita un producto con imagen existente
   useEffect(() => {
+    if (defaultValues?.imagenUrl) setPreview(defaultValues.imagenUrl)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Limpiar atributos y variantes solo cuando el usuario realmente cambia de categoría
+  useEffect(() => {
+    if (prevCategoriaId.current === categoriaId) return
+    prevCategoriaId.current = categoriaId
     setValue("atributos", {})
     setVariantes([])
   }, [categoriaId, setValue])
@@ -82,7 +100,19 @@ export function ProductoForm({ defaultValues, categorias }: ProductoFormProps) {
   }
 
   async function onSubmit(values: ProductoInput) {
-    await crearProducto(values)
+    const vars = variantes.map((v) => ({
+      nombre:      v.nombre,
+      sku:         v.sku || "",
+      atributos:   v.atributos,
+      stock:       v.stock,
+      stockMinimo: v.stockMinimo,
+    }))
+
+    if (productoId) {
+      await actualizarProducto(productoId, values, vars)
+    } else {
+      await crearProducto(values, vars)
+    }
     setGuardado(true)
   }
 
@@ -103,11 +133,26 @@ export function ProductoForm({ defaultValues, categorias }: ProductoFormProps) {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <Field label="Categoría *" error={errors.categoriaId?.message}>
-              <select className="input" {...register("categoriaId")}>
-                {categoriasProducto.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
+              {categoriaFija ? (
+                <>
+                  <input type="hidden" {...register("categoriaId")} />
+                  <div className="input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)", cursor: "default" }}>
+                    <span
+                      style={{
+                        width: 8, height: 8, borderRadius: 999, flexShrink: 0,
+                        background: categoriasProducto.find((c) => c.id === categoriaFija)?.color ?? "var(--accent-gold)",
+                      }}
+                    />
+                    {categoriasProducto.find((c) => c.id === categoriaFija)?.nombre}
+                  </div>
+                </>
+              ) : (
+                <select className="input" {...register("categoriaId")}>
+                  {categoriasProducto.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
+              )}
             </Field>
 
             <Field label="SKU *" error={errors.sku?.message}>
@@ -233,17 +278,96 @@ export function ProductoForm({ defaultValues, categorias }: ProductoFormProps) {
 
         <section className="surface elevated" style={{ display: "grid", gap: 14, padding: 20 }}>
           <h2 className="font-display" style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>Imagen</h2>
-          <div style={{
-            aspectRatio: "1 / 1", border: "1px dashed var(--border-active)", borderRadius: 8,
-            display: "grid", placeItems: "center", color: "var(--text-secondary)",
-            textAlign: "center", padding: 20, fontSize: 13,
-          }}>
-            Sube una imagen<br />
-            <span style={{ fontSize: 11, marginTop: 4, color: "var(--text-tertiary)" }}>PNG, JPG · máx. 2MB</span>
-          </div>
-          <Field label="URL pública" error={errors.imagenUrl?.message}>
-            <input className="input" {...register("imagenUrl")} placeholder="https://…" />
-          </Field>
+
+          {/* Preview o zona de drop */}
+          <label
+            htmlFor="imagen-upload"
+            style={{
+              position: "relative", aspectRatio: "1 / 1", borderRadius: 8,
+              border: `1px dashed ${subiendo ? "var(--accent-gold)" : "var(--border-active)"}`,
+              display: "grid", placeItems: "center", cursor: subiendo ? "wait" : "pointer",
+              overflow: "hidden", background: "var(--surface-3)",
+            }}
+          >
+            {preview ? (
+              <>
+                <Image src={preview} alt="Preview" fill style={{ objectFit: "cover" }} />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setPreview(null)
+                    setValue("imagenUrl", "")
+                  }}
+                  style={{
+                    position: "absolute", top: 6, right: 6,
+                    background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 999,
+                    color: "#fff", width: 26, height: 26, cursor: "pointer",
+                    display: "grid", placeItems: "center",
+                  }}
+                >
+                  <X size={13} aria-hidden="true" />
+                </button>
+              </>
+            ) : (
+              <div style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: 13, padding: 20 }}>
+                {subiendo ? (
+                  <span style={{ color: "var(--accent-gold)" }}>Subiendo…</span>
+                ) : (
+                  <>
+                    <Upload size={22} style={{ marginBottom: 8, display: "block", margin: "0 auto 8px" }} aria-hidden="true" />
+                    Haz click para subir<br />
+                    <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>JPG, PNG, WEBP · máx. 4MB</span>
+                  </>
+                )}
+              </div>
+            )}
+            <input
+              id="imagen-upload"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: "none" }}
+              disabled={subiendo}
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                if (file.size > 4 * 1024 * 1024) {
+                  setErrorImagen("La imagen no puede superar 4MB.")
+                  return
+                }
+                setErrorImagen("")
+                setSubiendo(true)
+                try {
+                  const { signedUrl, publicUrl, configured } = await generarURLFirmaSubida({
+                    fileName:    file.name,
+                    contentType: file.type,
+                  })
+                  if (!configured || !signedUrl) {
+                    setErrorImagen("R2 no está configurado.")
+                    return
+                  }
+                  await fetch(signedUrl, {
+                    method:  "PUT",
+                    body:    file,
+                    headers: { "Content-Type": file.type },
+                  })
+                  setValue("imagenUrl", publicUrl)
+                  setPreview(publicUrl)
+                } catch {
+                  setErrorImagen("Error al subir la imagen. Intenta de nuevo.")
+                } finally {
+                  setSubiendo(false)
+                  e.target.value = ""
+                }
+              }}
+            />
+          </label>
+
+          {errorImagen && (
+            <p style={{ margin: 0, fontSize: 12, color: "var(--error)" }}>{errorImagen}</p>
+          )}
+
+          <input type="hidden" {...register("imagenUrl")} />
         </section>
 
         <section className="surface elevated" style={{ padding: 20 }}>

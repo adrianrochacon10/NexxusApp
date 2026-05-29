@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 
 export interface VarianteFormData {
@@ -85,53 +84,71 @@ export function VariantesEditor({ variantes, onChange }: Props) {
       {/* Lista de variantes */}
       {variantes.length > 0 && (
         <div style={{ display: "grid", gap: 8 }}>
-          {/* Header */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 80px 80px auto", gap: 8, padding: "0 6px", fontSize: 11, color: "var(--text-secondary)", fontWeight: 500 }}>
-            <span>Nombre / Talla</span>
-            <span>SKU (opcional)</span>
-            <span>Stock</span>
-            <span>Mín.</span>
-            <span />
-          </div>
-
           {variantes.map((v, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 120px 80px 80px auto", gap: 8, alignItems: "center" }}>
-              <input
-                className="input"
-                value={v.nombre}
-                onChange={(e) => actualizar(i, "nombre", e.target.value)}
-                placeholder="Ej. Mediana"
-                style={{ fontSize: 13 }}
-              />
-              <input
-                className="input"
-                value={v.sku}
-                onChange={(e) => actualizar(i, "sku", e.target.value)}
-                placeholder="Auto"
-                style={{ fontSize: 12 }}
-              />
-              <input
-                className="input"
-                type="number"
-                min="0"
-                value={v.stock}
-                onChange={(e) => actualizar(i, "stock", Number(e.target.value))}
-                style={{ fontSize: 13 }}
-              />
-              <input
-                className="input"
-                type="number"
-                min="0"
-                value={v.stockMinimo}
-                onChange={(e) => actualizar(i, "stockMinimo", Number(e.target.value))}
-                style={{ fontSize: 13 }}
-              />
+            <div
+              key={i}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                gap: 8,
+                padding: "12px 12px 12px 14px",
+                borderRadius: 8,
+                border: "1px solid var(--border-subtle)",
+                background: "var(--surface-3)",
+                alignItems: "start",
+              }}
+            >
+              {/* Campos */}
+              <div style={{ display: "grid", gap: 8 }}>
+                {/* Fila 1: Nombre */}
+                <input
+                  className="input"
+                  value={v.nombre}
+                  onChange={(e) => actualizar(i, "nombre", e.target.value)}
+                  placeholder="Nombre / Talla — Ej. Mediana"
+                  style={{ fontSize: 13 }}
+                />
+                {/* Fila 2: SKU + Stock + Mín */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px", gap: 8 }}>
+                  <input
+                    className="input"
+                    value={v.sku}
+                    onChange={(e) => actualizar(i, "sku", e.target.value)}
+                    placeholder="SKU (opcional)"
+                    style={{ fontSize: 12 }}
+                  />
+                  <label style={{ display: "grid", gap: 3 }}>
+                    <span style={{ fontSize: 10, color: "var(--text-secondary)", paddingLeft: 2 }}>Stock</span>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      value={v.stock}
+                      onChange={(e) => actualizar(i, "stock", Number(e.target.value))}
+                      style={{ fontSize: 13 }}
+                    />
+                  </label>
+                  <label style={{ display: "grid", gap: 3 }}>
+                    <span style={{ fontSize: 10, color: "var(--text-secondary)", paddingLeft: 2 }}>Mín.</span>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      value={v.stockMinimo}
+                      onChange={(e) => actualizar(i, "stockMinimo", Number(e.target.value))}
+                      style={{ fontSize: 13 }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Botón eliminar */}
               <button
                 type="button"
                 className="button"
                 onClick={() => eliminar(i)}
                 aria-label="Eliminar variante"
-                style={{ padding: "0 10px", color: "var(--text-secondary)", minHeight: 36, height: 36 }}
+                style={{ padding: "0 10px", color: "var(--text-secondary)", minHeight: 36, height: 36, marginTop: 2 }}
               >
                 <Trash2 size={14} aria-hidden="true" />
               </button>

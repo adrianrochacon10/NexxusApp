@@ -9,22 +9,36 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
   const { id } = await params
   const { supabase, business } = await requireBusinessContext()
 
-  const [{ data: producto }, { data: categorias }] = await Promise.all([
+  const [{ data: producto }, { data: categorias }, { data: variantesDB }] = await Promise.all([
     supabase
       .from("productos")
-      .select("id, nombre, sku, descripcion, categoria_id, precio_venta, precio_costo, stock, stock_minimo, estatus, imagen_url, atributos")
+      .select("id, nombre, sku, descripcion, categoria_id, precio_venta, precio_costo, stock, stock_minimo, estatus, imagen_url, atributos, business_id")
       .eq("id", id)
       .eq("business_id", business.id)
       .maybeSingle(),
     supabase
       .from("categorias")
-      .select("id, nombre, atributos_base")
+      .select("id, nombre, color, atributos_base")
       .eq("business_id", business.id)
       .eq("tipo", "producto")
+      .order("nombre"),
+    supabase
+      .from("producto_variantes")
+      .select("id, nombre, sku, atributos, stock, stock_minimo")
+      .eq("producto_id", id)
       .order("nombre"),
   ])
 
   if (!producto || !categorias) notFound()
+
+  const variantesIniciales = (variantesDB ?? []).map((v) => ({
+    id:          v.id,
+    nombre:      v.nombre,
+    sku:         v.sku ?? "",
+    atributos:   (v.atributos as Record<string, string>) ?? {},
+    stock:       v.stock,
+    stockMinimo: v.stock_minimo,
+  }))
 
   return (
     <>
@@ -32,6 +46,8 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
       <div className="page">
         <ProductoForm
           categorias={categorias}
+          productoId={id}
+          variantesIniciales={variantesIniciales}
           defaultValues={{
             nombre:      producto.nombre,
             sku:         producto.sku ?? "",
@@ -43,6 +59,7 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
             stockMinimo: producto.stock_minimo,
             estatus:     producto.estatus as "disponible" | "pausado" | "agotado",
             imagenUrl:   producto.imagen_url ?? "",
+            atributos:   (producto.atributos as Record<string, string>) ?? {},
           }}
         />
       </div>

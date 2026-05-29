@@ -95,7 +95,7 @@ export default async function InventarioPage() {
                       {catProds.length} productos · {stockTotal} unidades · {formatCurrency(inventarioTotal)}
                     </p>
                   </div>
-                  <Link className="button" href={`/inventario/nuevo`} aria-label={`Agregar producto en ${categoria.nombre}`}>
+                  <Link className="button" href={`/inventario/nuevo?cat=${categoria.id}`} aria-label={`Agregar producto en ${categoria.nombre}`}>
                     <Plus size={16} aria-hidden="true" />
                   </Link>
                 </div>
