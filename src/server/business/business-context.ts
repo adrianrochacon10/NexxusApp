@@ -1,11 +1,14 @@
 import "server-only"
 
+import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { requireUser } from "@/server/auth/require-user"
 import { AppError } from "@/server/errors/app-error"
 
 export type BusinessRole = "admin"
+type SupabaseClient = NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>
 
 export type BusinessContext = {
+  supabase: SupabaseClient
   business: {
     id: string
     name: string
@@ -55,6 +58,7 @@ export async function requireBusinessContext(): Promise<BusinessContext> {
   }
 
   return {
+    supabase,
     business: {
       id: business.id,
       name: business.name,

@@ -4,7 +4,7 @@ import { formatCurrency } from "@/lib/utils"
 interface KPICardProps {
   label: string
   value: number
-  trend: number
+  trend?: number
   tone?: "gold" | "success" | "error" | "info"
   highlighted?: boolean
 }
@@ -17,9 +17,6 @@ const toneMap = {
 }
 
 export function KPICard({ label, value, trend, tone = "gold", highlighted = false }: KPICardProps) {
-  const positive = trend >= 0
-  const TrendIcon = positive ? ArrowUpRight : ArrowDownRight
-
   return (
     <article
       className="surface"
@@ -32,10 +29,12 @@ export function KPICard({ label, value, trend, tone = "gold", highlighted = fals
       <div className="font-mono" style={{ marginTop: 14, fontSize: 27 }}>
         {formatCurrency(value)}
       </div>
-      <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 6, color: toneMap[tone], fontSize: 13 }}>
-        <TrendIcon size={15} aria-hidden="true" />
-        {Math.abs(trend)}% vs. periodo anterior
-      </div>
+      {trend !== undefined && (
+        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 6, color: toneMap[tone], fontSize: 13 }}>
+          {trend >= 0 ? <ArrowUpRight size={15} aria-hidden="true" /> : <ArrowDownRight size={15} aria-hidden="true" />}
+          {Math.abs(trend)}% vs. periodo anterior
+        </div>
+      )}
     </article>
   )
 }

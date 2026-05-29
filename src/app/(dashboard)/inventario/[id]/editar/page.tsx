@@ -1,29 +1,48 @@
 import { notFound } from "next/navigation"
 import { ProductoForm } from "@/components/inventario/ProductoForm"
 import { Navbar } from "@/components/shared/Navbar"
-import { productos } from "@/lib/demo-data"
+import { requireBusinessContext } from "@/server/business/business-context"
+
+export const dynamic = "force-dynamic"
 
 export default async function EditarProductoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const producto = productos.find((item) => item.id === id)
-  if (!producto) notFound()
+  const { supabase, business } = await requireBusinessContext()
+
+  const [{ data: producto }, { data: categorias }] = await Promise.all([
+    supabase
+      .from("productos")
+      .select("id, nombre, sku, descripcion, categoria_id, precio_venta, precio_costo, stock, stock_minimo, estatus, imagen_url, atributos")
+      .eq("id", id)
+      .eq("business_id", business.id)
+      .maybeSingle(),
+    supabase
+      .from("categorias")
+      .select("id, nombre, atributos_base")
+      .eq("business_id", business.id)
+      .eq("tipo", "producto")
+      .order("nombre"),
+  ])
+
+  if (!producto || !categorias) notFound()
 
   return (
     <>
       <Navbar title="Editar producto" subtitle={producto.nombre} />
       <div className="page">
         <ProductoForm
+          categorias={categorias}
           defaultValues={{
-            nombre: producto.nombre,
-            sku: producto.sku,
-            descripcion: producto.descripcion,
-            categoriaId: producto.categoria.id,
-            precioVenta: producto.precioVenta,
-            precioCosto: producto.precioCosto,
-            stock: producto.stock,
-            stockMinimo: producto.stockMinimo,
-            estatus: producto.estatus,
-            imagenUrl: producto.imagenUrl,
+            nombre:      producto.nombre,
+            sku:         producto.sku ?? "",
+            descripcion: producto.descripcion ?? "",
+            categoriaId: producto.categoria_id ?? "",
+            precioVenta: producto.precio_venta,
+            precioCosto: producto.precio_costo,
+            stock:       producto.stock,
+            stockMinimo: producto.stock_minimo,
+            estatus:     producto.estatus as "disponible" | "pausado" | "agotado",
+            imagenUrl:   producto.imagen_url ?? "",
           }}
         />
       </div>

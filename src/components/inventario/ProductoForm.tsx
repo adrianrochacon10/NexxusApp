@@ -3,16 +3,22 @@
 import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useRouter } from "next/navigation"
 import { Save, Sparkles } from "lucide-react"
 import { productoSchema, type ProductoInput } from "@/lib/validations/producto.schema"
 import { VariantesEditor, type VarianteFormData } from "@/components/inventario/VariantesEditor"
-import { useStore } from "@/lib/store"
+import { crearProducto } from "@/actions/inventario"
 
 type ProductoFormDefaults = Omit<Partial<ProductoInput>, "variantes">
 
+export interface CategoriaOption {
+  id:            string
+  nombre:        string
+  atributos_base: string[]
+}
+
 interface ProductoFormProps {
   defaultValues?: ProductoFormDefaults
+  categorias:    CategoriaOption[]
 }
 
 function generarSku(categoriaId: string, categorias: { id: string; nombre: string }[]): string {
@@ -22,13 +28,11 @@ function generarSku(categoriaId: string, categorias: { id: string; nombre: strin
   return `${prefix}-${rand}`
 }
 
-export function ProductoForm({ defaultValues }: ProductoFormProps) {
-  const router = useRouter()
-  const [guardado, setGuardado]   = useState(false)
+export function ProductoForm({ defaultValues, categorias }: ProductoFormProps) {
+  const [guardado,  setGuardado]  = useState(false)
   const [variantes, setVariantes] = useState<VarianteFormData[]>([])
 
-  const { categorias, crearProducto } = useStore()
-  const categoriasProducto = categorias.filter((c) => c.tipo === "producto")
+  const categoriasProducto = categorias
 
   const {
     register,
@@ -59,7 +63,7 @@ export function ProductoForm({ defaultValues }: ProductoFormProps) {
   const precioCosto = watch("precioCosto")
 
   const categoriaActual = categoriasProducto.find((c) => c.id === categoriaId)
-  const atributosBase   = categoriaActual?.atributosBase ?? []
+  const atributosBase   = categoriaActual?.atributos_base ?? []
   const tieneVariantes  = variantes.length > 0
 
   // Limpiar atributos al cambiar de categoría
@@ -78,29 +82,8 @@ export function ProductoForm({ defaultValues }: ProductoFormProps) {
   }
 
   async function onSubmit(values: ProductoInput) {
-    crearProducto({
-      nombre:      values.nombre,
-      categoriaId: values.categoriaId,
-      descripcion: values.descripcion,
-      sku:         values.sku,
-      precioVenta: values.precioVenta,
-      precioCosto: values.precioCosto,
-      stock:       values.stock,
-      stockMinimo: values.stockMinimo,
-      estatus:     values.estatus,
-      imagenUrl:   values.imagenUrl,
-      atributos:   values.atributos,
-      variantes:   variantes.map((v) => ({
-        nombre:      v.nombre,
-        sku:         v.sku || undefined,
-        atributos:   v.atributos,
-        stock:       v.stock,
-        stockMinimo: v.stockMinimo,
-      })),
-    })
+    await crearProducto(values)
     setGuardado(true)
-    await new Promise((r) => setTimeout(r, 800))
-    router.push("/inventario")
   }
 
   return (
@@ -175,7 +158,7 @@ export function ProductoForm({ defaultValues }: ProductoFormProps) {
               </p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
-              {atributosBase.map((atributo) => (
+              {atributosBase.map((atributo: string) => (
                 <Field key={atributo} label={atributo}>
                   <input
                     className="input"
