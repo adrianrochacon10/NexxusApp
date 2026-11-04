@@ -1,163 +1,95 @@
 import Link from "next/link"
-import { AlertCircle, Plus, ShoppingBag, TrendingUp } from "lucide-react"
+import { Plus, Receipt } from "lucide-react"
 import { Navbar } from "@/components/shared/Navbar"
+import { EmptyState } from "@/components/shared/EmptyState"
 import { formatCurrency } from "@/lib/utils"
-import { EstatusPagoBadge, EstatusOperativoBadge } from "@/components/ventas/EstatusPagoBadge"
 import { requireBusinessContext } from "@/server/business/business-context"
+import { VentasHistorial } from "@/components/ventas/historial/VentasHistorial"
+import { hoyISO, toVentaVM, type VentaRow } from "@/components/ventas/historial/venta-data"
+import "@/styles/ventas.css"
 
 export const dynamic = "force-dynamic"
-
-const FORMA_PAGO_LABEL: Record<string, string> = {
-  efectivo: "Efectivo", tarjeta: "Tarjeta", transferencia: "Transferencia", adeudo: "Adeudo",
-}
-
-function formatFechaRelativa(fecha: string) {
-  const hoy  = new Date().toISOString().split("T")[0]
-  const ayer = new Date(Date.now() - 86400000).toISOString().split("T")[0]
-  if (fecha === hoy)  return "Hoy"
-  if (fecha === ayer) return "Ayer"
-  return fecha
-}
 
 export default async function VentasPage() {
   const { supabase, business } = await requireBusinessContext()
 
-  const { data: ventas } = await supabase
+  const { data } = await supabase
     .from("ventas")
     .select(`
       id, folio, fecha, hora, total, monto_pagado, saldo_pendiente,
       forma_pago_inicial, estado_pago, estatus, cliente_nombre, cliente_telefono, notas,
-      venta_lineas (producto_nombre, variante_nombre, cantidad)
+      motivo_cancelacion,
+      venta_lineas (id, producto_nombre, variante_nombre, cantidad, precio_unitario, subtotal),
+      venta_pagos (id, monto, forma_pago, notas, created_at)
     `)
     .eq("business_id", business.id)
     .order("fecha", { ascending: false })
     .order("created_at", { ascending: false })
 
-  const todas = ventas ?? []
-  const hoy   = new Date().toISOString().split("T")[0]
+  const ventas = ((data ?? []) as unknown as VentaRow[]).map(toVentaVM)
+  const hoy = hoyISO()
 
-  const ventasHoy         = todas.filter((v) => v.fecha === hoy)
-  const totalHoy          = ventasHoy.filter((v) => v.estatus === "activa").reduce((s, v) => s + v.monto_pagado, 0)
-  const unidadesHoy       = ventasHoy.filter((v) => v.estatus === "activa").reduce((s, v) => s + v.venta_lineas.reduce((a: number, l: { cantidad: number }) => a + l.cantidad, 0), 0)
-  const cuentasPendientes = todas.filter((v) => v.estatus === "activa" && v.estado_pago !== "pagada").length
+  const activasHoy  = ventas.filter((v) => v.fecha === hoy && v.estatus === "activa")
+  const cobradoHoy  = activasHoy.reduce((s, v) => s + v.montoPagado, 0)
+  const unidadesHoy = activasHoy.reduce((s, v) => s + v.lineas.reduce((a, l) => a + l.cantidad, 0), 0)
+  const pendientes  = ventas.filter((v) => v.estatus === "activa" && v.estadoPago !== "pagada")
+  const porCobrar   = pendientes.reduce((s, v) => s + v.saldo, 0)
 
-  const porFecha = todas.reduce<Record<string, typeof todas>>((acc, v) => {
-    if (!acc[v.fecha]) acc[v.fecha] = []
-    acc[v.fecha].push(v)
-    return acc
-  }, {})
-  const fechas = Object.keys(porFecha).sort((a, b) => b.localeCompare(a))
+  const nuevaVenta = (
+    <Link href="/ventas/nueva" className="nx-btn nx-btn-primary">
+      <Plus size={20} aria-hidden="true" />
+      Nueva venta
+    </Link>
+  )
 
   return (
     <>
-      <Navbar title="Ventas" subtitle="Historial de ventas y acceso rápido al registro de nuevas operaciones." />
-      <div className="page" style={{ display: "grid", gap: 20 }}>
-
-        <section style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", gap: 12 }}>
-            <div className="surface" style={{ padding: "12px 18px", display: "flex", alignItems: "center", gap: 12 }}>
-              <TrendingUp size={17} color="var(--accent-gold)" aria-hidden="true" />
-              <div>
-                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Cobrado hoy</div>
-                <div className="font-mono" style={{ fontSize: 19, marginTop: 2 }}>{formatCurrency(totalHoy)}</div>
-              </div>
-            </div>
-            <div className="surface" style={{ padding: "12px 18px", display: "flex", alignItems: "center", gap: 12 }}>
-              <ShoppingBag size={17} color="var(--text-secondary)" aria-hidden="true" />
-              <div>
-                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Unidades hoy</div>
-                <div className="font-mono" style={{ fontSize: 19, marginTop: 2 }}>{unidadesHoy}</div>
-              </div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            {cuentasPendientes > 0 && (
-              <Link href="/ventas/pendientes" className="button" style={{ position: "relative", color: "var(--warning)", borderColor: "rgba(155,122,74,0.35)" }}>
-                <AlertCircle size={16} aria-hidden="true" />
-                Cuentas por cobrar
-                <span style={{ position: "absolute", top: -6, right: -6, background: "var(--warning)", color: "#0a0a0a", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 18, height: 18, display: "grid", placeItems: "center", padding: "0 4px" }}>
-                  {cuentasPendientes}
-                </span>
+      <Navbar title="Ventas" actions={nuevaVenta} />
+      <div className="page vx-page">
+        {ventas.length === 0 ? (
+          <EmptyState
+            icon={<Receipt size={28} strokeWidth={1.8} />}
+            title="Aún no hay ventas"
+            description="Cuando registres tu primera venta aparecerá aquí, agrupada por día."
+            actionHref="/ventas/nueva"
+            actionLabel="Registrar venta"
+          />
+        ) : (
+          <>
+            {/* KPIs escritorio */}
+            <section className="vx-kpis vx-only-desk" aria-label="Resumen de hoy">
+              <article className="nx-card nx-kpi">
+                <span className="nx-kpi-label">Cobrado hoy</span>
+                <span className="nx-kpi-value">{formatCurrency(cobradoHoy)}</span>
+                <span className="nx-kpi-foot">{activasHoy.length} {activasHoy.length === 1 ? "venta" : "ventas"}</span>
+              </article>
+              <article className="nx-card nx-kpi">
+                <span className="nx-kpi-label">Unidades vendidas hoy</span>
+                <span className="nx-kpi-value">{unidadesHoy}</span>
+                <span className="nx-kpi-foot">Sin contar canceladas</span>
+              </article>
+              <Link href="/ventas/pendientes" className="nx-card nx-kpi vx-kpi-link" aria-label={`Cuentas pendientes: ${pendientes.length}, ${formatCurrency(porCobrar)} por cobrar. Ver cuentas por cobrar`}>
+                <span className="nx-kpi-label">Cuentas pendientes</span>
+                <span className="nx-kpi-value">{pendientes.length}</span>
+                <span className="nx-kpi-foot">{formatCurrency(porCobrar)} por cobrar</span>
               </Link>
-            )}
-            <Link href="/ventas/nueva" className="button button-primary">
-              <Plus size={17} aria-hidden="true" />
-              Nueva venta
-            </Link>
-          </div>
-        </section>
+            </section>
 
-        {todas.length === 0 && (
-          <div className="surface" style={{ padding: 32, textAlign: "center", color: "var(--text-secondary)" }}>
-            Aún no hay ventas registradas. ¡Registra la primera!
-          </div>
-        )}
-
-        <section style={{ display: "grid", gap: 28 }}>
-          {fechas.map((fecha) => {
-            const items      = porFecha[fecha]
-            const totalFecha = items.filter((v) => v.estatus === "activa").reduce((s, v) => s + v.monto_pagado, 0)
-
-            return (
-              <div key={fecha}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, paddingBottom: 8, borderBottom: "1px solid var(--border-subtle)" }}>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    {formatFechaRelativa(fecha)}
-                  </span>
-                  <span className="font-mono" style={{ fontSize: 12, color: "var(--success)" }}>
-                    +{formatCurrency(totalFecha)}
-                  </span>
-                </div>
-
-                <div style={{ display: "grid", gap: 6 }}>
-                  {items.map((venta) => {
-                    const formaPago = venta.forma_pago_inicial ?? "adeudo"
-                    const resumen   = venta.venta_lineas.map((l: { producto_nombre: string; variante_nombre: string | null; cantidad: number }) => `${l.producto_nombre}${l.variante_nombre ? ` (${l.variante_nombre})` : ""} ×${l.cantidad}`).join(" · ")
-
-                    return (
-                      <Link
-                        key={venta.id}
-                        href={`/ventas/${venta.id}`}
-                        className="surface elevated"
-                        style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 16, alignItems: "center", padding: "14px 16px", textDecoration: "none", opacity: venta.estatus === "cancelada" ? 0.55 : 1 }}
-                      >
-                        <span style={{ fontSize: 12, color: "var(--text-tertiary)", fontFamily: "var(--font-jetbrains), monospace", whiteSpace: "nowrap" }}>
-                          {venta.hora}
-                        </span>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-                            {venta.folio}
-                            <EstatusPagoBadge estatus={venta.estado_pago as "pagada" | "parcial" | "pendiente"} />
-                            {venta.estatus === "cancelada" && <EstatusOperativoBadge estatus="cancelada" />}
-                          </div>
-                          <div style={{ fontSize: 12, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {resumen}
-                          </div>
-                          {venta.cliente_nombre && (
-                            <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
-                              {venta.cliente_nombre}{venta.cliente_telefono ? ` · ${venta.cliente_telefono}` : ""}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                          <span className="badge" style={{ fontSize: 11 }}>{FORMA_PAGO_LABEL[formaPago] ?? formaPago}</span>
-                          <span className="font-mono" style={{ fontSize: 15, color: venta.estatus === "cancelada" ? "var(--text-tertiary)" : "var(--success)" }}>
-                            {venta.estatus === "cancelada" ? formatCurrency(venta.total) : `+${formatCurrency(venta.monto_pagado)}`}
-                          </span>
-                          {venta.saldo_pendiente > 0 && venta.estatus === "activa" && (
-                            <span style={{ fontSize: 11, color: "var(--warning)" }}>
-                              Saldo: {formatCurrency(venta.saldo_pendiente)}
-                            </span>
-                          )}
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
+            {/* KPIs móvil */}
+            <section className="vx-kpis-mob vx-only-mob" aria-label="Resumen de hoy">
+              <div className="nx-card" style={{ padding: "12px 14px" }}>
+                <div className="t-small">Cobrado hoy</div>
+                <div className="nx-num t-h2">{formatCurrency(cobradoHoy)}</div>
               </div>
-            )
-          })}
-        </section>
+              <Link href="/ventas/pendientes" className="nx-card vx-kpi-link" style={{ padding: "12px 14px" }}>
+                <div className="t-small">Por cobrar</div>
+                <div className="nx-num t-h2" style={{ color: "var(--nx-warn-fg)" }}>{formatCurrency(porCobrar)}</div>
+              </Link>
+            </section>
+
+            <VentasHistorial ventas={ventas} hoy={hoy} />
+          </>
+        )}
       </div>
     </>
   )

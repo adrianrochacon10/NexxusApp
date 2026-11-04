@@ -1,43 +1,105 @@
-import { AlertTriangle, ArrowRight, CheckCircle, Package, ShoppingCart, TrendingUp } from "lucide-react"
 import Link from "next/link"
+import { AlertCircle, AlertTriangle, Info, LineChart, Plus, ShoppingBag } from "lucide-react"
 import { Navbar } from "@/components/shared/Navbar"
 import { KPICard } from "@/components/shared/KPICard"
-import { formatCurrency } from "@/lib/utils"
+import { EstatusPagoBadge } from "@/components/ventas/EstatusPagoBadge"
+import { RetryButton } from "@/components/dashboard/RetryButton"
+import { formatCurrency, getInitials } from "@/lib/utils"
 import { requireBusinessContext } from "@/server/business/business-context"
+import type { EstatusPagoVenta } from "@/types/ventas.types"
+import type { FormaPago } from "@/types/finanzas.types"
+import "@/styles/dashboard.css"
 
 export const dynamic = "force-dynamic"
 
+const FORMA_PAGO: Record<FormaPago, string> = {
+  efectivo: "Efectivo",
+  tarjeta: "Tarjeta",
+  transferencia: "Transferencia",
+  adeudo: "Adeudo",
+}
+
+const STOCK_VISIBLE = 5
+
+type LineaResumen = { producto_nombre: string; variante_nombre: string | null; cantidad: number }
+type VentaReciente = {
+  id: string
+  folio: string
+  hora: string | null
+  monto_pagado: number
+  saldo_pendiente: number
+  estado_pago: EstatusPagoVenta
+  forma_pago_inicial: FormaPago | null
+  cliente_nombre: string | null
+  venta_lineas: LineaResumen[] | null
+}
+type TrxReciente = {
+  id: string
+  tipo: "ingreso" | "gasto" | "transferencia"
+  monto: number
+  concepto: string
+  fecha: string
+  forma_pago: FormaPago | null
+  venta_id: string | null
+  categoria_id: string | null
+  categorias: { nombre: string } | { nombre: string }[] | null
+}
+type LineaVendida = { producto_id: string; producto_nombre: string; cantidad: number }
+
+/** Color de categoría estable: cat-1 queda para ventas automáticas. */
+function colorCategoria(categoriaId: string | null, automatica: boolean) {
+  if (automatica) return "var(--nx-cat-1)"
+  if (!categoriaId) return "var(--nx-cat-6)"
+  let h = 0
+  for (const c of categoriaId) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return `var(--nx-cat-${2 + (h % 5)})`
+}
+
+function plural(n: number, uno: string, varios: string) {
+  return `${n} ${n === 1 ? uno : varios}`
+}
+
 export default async function DashboardPage() {
-  const { supabase, business } = await requireBusinessContext()
+  const { supabase, business, user } = await requireBusinessContext()
 
-  const hoy       = new Date().toISOString().split("T")[0]
-  const mesDesde  = hoy.slice(0, 7) + "-01"
+  // Las ventas guardan `fecha` con la fecha UTC; se usa la misma referencia aquí.
+  const ahora    = new Date()
+  const hoy      = ahora.toISOString().split("T")[0]
+  const ayer     = new Date(ahora.getTime() - 86_400_000).toISOString().split("T")[0]
+  const mesDesde = hoy.slice(0, 7) + "-01"
 
-  const [
-    { data: ventasHoyData },
-    { data: transacciones },
-    { data: bajoStockData },
-    { data: ventasRecientesData },
-    { data: masVendidosData },
-  ] = await Promise.all([
+  const mesNombre = new Intl.DateTimeFormat("es-MX", { month: "long", timeZone: "UTC" }).format(new Date(`${mesDesde}T12:00:00Z`))
+  const mes       = mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)
+  const mesAnio   = `${mes} ${hoy.slice(0, 4)}`
+
+  const nombre = user.nombre?.trim().split(/\s+/)[0] || user.email || "de nuevo"
+
+  const [ventasHoyRes, trxMesRes, trxRecientesRes, productosRes, ventasRecientesRes, vendidosRes] = await Promise.all([
     supabase
       .from("ventas")
-      .select("total, monto_pagado, estatus")
+      .select("monto_pagado, estatus")
       .eq("business_id", business.id)
       .eq("fecha", hoy),
     supabase
       .from("transacciones")
-      .select("id, tipo, monto, concepto, fecha, forma_pago, categorias:categoria_id(nombre)")
+      .select("tipo, monto")
       .eq("business_id", business.id)
       .gte("fecha", mesDesde),
     supabase
-      .from("productos")
-      .select("id, nombre, stock, stock_minimo")
+      .from("transacciones")
+      .select("id, tipo, monto, concepto, fecha, forma_pago, venta_id, categoria_id, categorias:categoria_id(nombre)")
       .eq("business_id", business.id)
-      .filter("stock", "lte", "stock_minimo"),
+      .order("fecha", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(5),
+    // PostgREST no compara dos columnas entre sí: el filtro de stock bajo se hace en JS
+    supabase
+      .from("productos")
+      .select("id, nombre, sku, stock, stock_minimo")
+      .eq("business_id", business.id),
     supabase
       .from("ventas")
-      .select("id, folio, hora, total, venta_lineas(producto_nombre, cantidad)")
+      .select("id, folio, hora, monto_pagado, saldo_pendiente, estado_pago, forma_pago_inicial, cliente_nombre, venta_lineas(producto_nombre, variante_nombre, cantidad)")
       .eq("business_id", business.id)
       .eq("estatus", "activa")
       .order("fecha", { ascending: false })
@@ -45,176 +107,303 @@ export default async function DashboardPage() {
       .limit(3),
     supabase
       .from("venta_lineas")
-      .select("producto_id, producto_nombre, cantidad")
-      .eq("business_id", business.id),
+      .select("producto_id, producto_nombre, cantidad, ventas!inner(fecha, estatus)")
+      .eq("business_id", business.id)
+      .eq("ventas.estatus", "activa")
+      .gte("ventas.fecha", mesDesde),
   ])
 
-  const totalHoy   = (ventasHoyData ?? []).filter((v) => v.estatus === "activa").reduce((s, v) => s + v.monto_pagado, 0)
-  const ingresos   = (transacciones ?? []).filter((t) => t.tipo === "ingreso").reduce((s, t) => s + t.monto, 0)
-  const gastos     = (transacciones ?? []).filter((t) => t.tipo === "gasto").reduce((s, t) => s + t.monto, 0)
-  const bajoStock  = bajoStockData ?? []
+  // ── KPIs ──────────────────────────────────────────────
+  const kpiError      = Boolean(ventasHoyRes.error || trxMesRes.error)
+  const ventasHoy     = (ventasHoyRes.data ?? []).filter((v) => v.estatus === "activa")
+  const cobradoHoy    = ventasHoy.reduce((s, v) => s + Number(v.monto_pagado), 0)
+  const trxMes        = trxMesRes.data ?? []
+  const ingresosMes   = trxMes.filter((t) => t.tipo === "ingreso")
+  const egresosMes    = trxMes.filter((t) => t.tipo === "gasto")
+  const ingresos      = ingresosMes.reduce((s, t) => s + Number(t.monto), 0)
+  const egresos       = egresosMes.reduce((s, t) => s + Number(t.monto), 0)
 
-  // Top productos más vendidos
-  const conteo: Record<string, { nombre: string; unidades: number }> = {}
-  for (const linea of masVendidosData ?? []) {
-    if (!conteo[linea.producto_id]) conteo[linea.producto_id] = { nombre: linea.producto_nombre, unidades: 0 }
-    conteo[linea.producto_id].unidades += linea.cantidad
+  // ── Stock ─────────────────────────────────────────────
+  const productos     = productosRes.data ?? []
+  const negocioNuevo  = !productosRes.error && productos.length === 0
+  const bajos         = productos.filter((p) => p.stock > 0 && p.stock <= p.stock_minimo).sort((a, b) => a.stock - b.stock)
+  const agotados      = productos.filter((p) => p.stock <= 0)
+  const porReponer    = [...bajos, ...agotados]
+
+  let alertaStock = ""
+  if (bajos.length > 0 && agotados.length > 0) {
+    alertaStock = `${plural(bajos.length, "producto", "productos")} con stock bajo y ${plural(agotados.length, "agotado", "agotados")}`
+  } else if (bajos.length > 0) {
+    alertaStock = `${plural(bajos.length, "producto", "productos")} con stock bajo`
+  } else if (agotados.length > 0) {
+    alertaStock = `${plural(agotados.length, "producto agotado", "productos agotados")}`
   }
-  const masVendidos = Object.entries(conteo).sort(([, a], [, b]) => b.unidades - a.unidades).slice(0, 3)
 
-  const ultimasTrx = (transacciones ?? []).slice(0, 5)
+  // ── Ventas / transacciones ────────────────────────────
+  const ventasRecientes = (ventasRecientesRes.data ?? []) as unknown as VentaReciente[]
+  const trxRecientes    = (trxRecientesRes.data ?? []) as unknown as TrxReciente[]
+
+  // ── Más vendidos del mes ──────────────────────────────
+  const conteo = new Map<string, { nombre: string; unidades: number }>()
+  for (const l of (vendidosRes.data ?? []) as unknown as LineaVendida[]) {
+    const actual = conteo.get(l.producto_id) ?? { nombre: l.producto_nombre, unidades: 0 }
+    actual.unidades += Number(l.cantidad)
+    conteo.set(l.producto_id, actual)
+  }
+  const masVendidos = [...conteo.entries()].sort(([, a], [, b]) => b.unidades - a.unidades).slice(0, 3)
+  const maxUnidades = masVendidos[0]?.[1].unidades ?? 0
+
+  function fechaRelativa(fecha: string) {
+    if (fecha === hoy) return "Hoy"
+    if (fecha === ayer) return "Ayer"
+    return new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${fecha}T12:00:00Z`))
+  }
 
   return (
     <>
-      <Navbar title="Dashboard" subtitle="Pulso operativo y financiero de tu negocio." />
-      <div className="page" style={{ display: "grid", gap: 20 }}>
+      <Navbar title={`Hola, ${nombre}`} />
+      <div className="page dash">
 
-        {bajoStock.length > 0 && (
-          <div role="alert" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", borderRadius: 8, border: "1px solid rgba(155,122,74,0.35)", background: "rgba(155,122,74,0.08)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <AlertTriangle size={17} color="var(--warning)" aria-hidden="true" />
-              <span style={{ fontSize: 14, color: "var(--warning)" }}>
-                <strong>{bajoStock.length} {bajoStock.length === 1 ? "producto" : "productos"}</strong> con stock bajo o agotado
-              </span>
+        {/* ── Avisos ── */}
+        {kpiError && (
+          <div className="nx-alert is-bad dash-alert" role="alert">
+            <AlertCircle size={24} aria-hidden="true" style={{ flex: "none" }} />
+            <div className="grow">
+              <div className="ttl">No pudimos actualizar los totales</div>
+              <div className="txt">Revisa tu conexión e inténtalo de nuevo.</div>
             </div>
-            <Link href="/inventario" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--warning)", flexShrink: 0 }}>
-              Ver inventario <ArrowRight size={14} aria-hidden="true" />
-            </Link>
+            <RetryButton />
           </div>
         )}
 
-        <section className="kpi-grid" aria-label="Métricas clave">
-          <KPICard label="Ventas hoy"   value={totalHoy}          tone="gold"    />
-          <KPICard label="Ingresos mes" value={ingresos}          tone="success" />
-          <KPICard label="Gastos mes"   value={gastos}            tone="error"   />
-          <KPICard label="Balance neto" value={ingresos - gastos} tone="info"    highlighted />
-        </section>
-
-        <section className="dashboard-grid">
-          {/* Stock bajo */}
-          <article className="surface" style={{ padding: 20, display: "grid", alignContent: "start", gap: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 className="font-display" style={{ margin: 0, fontSize: 26, fontWeight: 500 }}>Stock bajo</h2>
-              <Package size={17} color="var(--text-secondary)" aria-hidden="true" />
+        {negocioNuevo ? (
+          <div className="nx-alert is-info dash-alert">
+            <Info size={24} aria-hidden="true" style={{ flex: "none" }} />
+            <div className="grow">
+              <div className="ttl">Empieza por tu inventario</div>
+              <div className="txt">Agrega tus productos para poder vender.</div>
             </div>
-            {bajoStock.length === 0 ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--success)", fontSize: 13 }}>
-                <CheckCircle size={16} aria-hidden="true" />
-                Todo el inventario está saludable.
-              </div>
-            ) : (
-              <div style={{ display: "grid", gap: 8 }}>
-                {bajoStock.map((p) => (
-                  <Link key={p.id} href={`/inventario/${p.id}`} className="surface elevated" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 6 }}>
-                    <AlertTriangle size={15} color="var(--warning)" aria-hidden="true" style={{ flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</div>
-                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{p.stock} disponibles · mín. {p.stock_minimo}</div>
-                    </div>
-                    <ArrowRight size={13} color="var(--text-tertiary)" aria-hidden="true" style={{ flexShrink: 0 }} />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </article>
-
-          {/* Más vendidos */}
-          <article className="surface" style={{ padding: 20 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <TrendingUp size={17} color="var(--text-secondary)" aria-hidden="true" />
-                <h2 className="font-display" style={{ margin: 0, fontSize: 22, fontWeight: 500 }}>Más vendidos</h2>
-              </div>
-              <Link href="/inventario" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-secondary)" }}>
-                Ver inventario <ArrowRight size={13} aria-hidden="true" />
-              </Link>
-            </div>
-            {masVendidos.length === 0 ? (
-              <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Aún no hay ventas registradas.</p>
-            ) : (
-              <div style={{ display: "grid", gap: 8 }}>
-                {masVendidos.map(([id, data], i) => (
-                  <Link key={id} href={`/inventario/${id}`} className="surface elevated" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 6 }}>
-                    <span className="font-mono" style={{ fontSize: 11, color: "var(--text-tertiary)", width: 16, textAlign: "center", flexShrink: 0 }}>{i + 1}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{data.nombre}</div>
-                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{data.unidades} unidades vendidas</div>
-                    </div>
-                    <ArrowRight size={13} color="var(--text-tertiary)" aria-hidden="true" style={{ flexShrink: 0 }} />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </article>
-        </section>
-
-        {/* Ventas recientes */}
-        <article className="surface" style={{ padding: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <ShoppingCart size={17} color="var(--accent-gold)" aria-hidden="true" />
-              <h2 className="font-display" style={{ margin: 0, fontSize: 22, fontWeight: 500 }}>Ventas recientes</h2>
-            </div>
-            <Link href="/ventas" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-secondary)" }}>
-              Ver todas <ArrowRight size={13} aria-hidden="true" />
+            <Link href="/inventario/nuevo" className="nx-btn nx-btn-primary">
+              <Plus size={18} aria-hidden="true" />
+              Agregar producto
             </Link>
           </div>
-          {(ventasRecientesData ?? []).length === 0 ? (
-            <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Aún no hay ventas. ¡Registra la primera!</p>
+        ) : (
+          alertaStock && (
+            <div className="nx-alert is-warn dash-alert" role="alert">
+              <AlertTriangle size={24} aria-hidden="true" style={{ flex: "none" }} />
+              <div className="grow">
+                <div className="ttl">{alertaStock}</div>
+                <div className="txt">Repón antes de que se acaben: los productos agotados no se pueden vender en el POS.</div>
+              </div>
+              <Link href="/inventario" className="nx-btn nx-btn-secondary">Ver inventario</Link>
+            </div>
+          )
+        )}
+
+        {/* ── KPIs ── */}
+        <section className="dash-kpis" aria-label="Métricas clave">
+          {kpiError ? (
+            ["Ventas cobradas hoy", "Ingresos del mes", "Egresos del mes", "Balance del mes"].map((label) => (
+              <article key={label} className="nx-card nx-kpi dash-kpi-na">
+                <span className="nx-kpi-label">{label}</span>
+                <span className="nx-kpi-value" aria-label="No disponible">—</span>
+                <span className="nx-kpi-foot">No disponible</span>
+              </article>
+            ))
           ) : (
-            <div style={{ display: "grid" }}>
-              {(ventasRecientesData ?? []).map((venta) => (
-                <div key={venta.id} style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 14, alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--border-subtle)" }}>
-                  <span style={{ fontSize: 12, color: "var(--text-tertiary)", fontFamily: "var(--font-jetbrains), monospace", whiteSpace: "nowrap" }}>{venta.hora}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{venta.folio}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {(venta.venta_lineas as { producto_nombre: string; cantidad: number }[]).map((l) => `${l.producto_nombre} ×${l.cantidad}`).join(" · ")}
-                    </div>
-                  </div>
-                  <span className="font-mono" style={{ fontSize: 14, color: "var(--success)", flexShrink: 0 }}>+{formatCurrency(venta.total)}</span>
-                </div>
-              ))}
-            </div>
+            <>
+              <KPICard
+                label="Ventas cobradas hoy"
+                value={cobradoHoy}
+                foot={ventasHoy.length > 0 ? plural(ventasHoy.length, "venta", "ventas") : "Sin ventas hoy"}
+              />
+              <KPICard label="Ingresos del mes" value={ingresos} foot={mesAnio} />
+              <KPICard
+                label="Egresos del mes"
+                value={egresos}
+                foot={egresosMes.length > 0 ? plural(egresosMes.length, "movimiento", "movimientos") : "Sin movimientos"}
+              />
+              <KPICard label="Balance del mes" value={ingresos - egresos} foot="Ingresos menos egresos" signed />
+            </>
           )}
-          <Link href="/ventas/nueva" className="button button-primary" style={{ width: "100%", marginTop: 16 }}>
-            <ShoppingCart size={16} aria-hidden="true" />
-            Nueva venta
-          </Link>
-        </article>
+        </section>
 
-        {/* Últimas transacciones */}
-        {ultimasTrx.length > 0 && (
-          <article className="surface" style={{ padding: 20 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 className="font-display" style={{ margin: 0, fontSize: 22, fontWeight: 500 }}>Últimas transacciones</h2>
-              <Link href="/finanzas" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-secondary)" }}>
-                Ver finanzas <ArrowRight size={13} aria-hidden="true" />
-              </Link>
-            </div>
-            <div style={{ display: "grid" }}>
-              {ultimasTrx.map((trx, i) => {
-                const cat = Array.isArray(trx.categorias)
-                  ? trx.categorias[0]
-                  : (trx.categorias as { nombre: string } | null)
-                return (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "80px 1fr auto", gap: 14, alignItems: "center", padding: "11px 0", borderBottom: "1px solid var(--border-subtle)" }}>
-                    <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{new Date(trx.fecha + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{trx.concepto}</div>
-                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{cat?.nombre} · {trx.forma_pago}</div>
+        <div className="dash-cols">
+          <div className="dash-col">
+            {/* ── Últimas ventas ── */}
+            <section className="nx-list dash-p-ventas" aria-labelledby="h-ventas">
+              <div className="nx-panel-head">
+                <h2 className="t-h2" id="h-ventas">Últimas ventas</h2>
+                <Link href="/ventas/nueva" className="nx-btn nx-btn-primary nx-btn-sm" style={{ minHeight: 44 }}>
+                  <Plus size={18} aria-hidden="true" />
+                  Nueva venta
+                </Link>
+              </div>
+              {ventasRecientesRes.error ? (
+                <PanelError />
+              ) : ventasRecientes.length === 0 ? (
+                <div className="nx-empty dash-empty">
+                  <div className="nx-empty-ic" aria-hidden="true"><ShoppingBag size={26} strokeWidth={1.8} /></div>
+                  <div className="ttl">Aún no hay ventas</div>
+                  <div className="txt">Tu primera venta aparecerá aquí.</div>
+                  <Link href="/ventas/nueva" className="nx-btn nx-btn-primary">
+                    <Plus size={18} aria-hidden="true" />
+                    Nueva venta
+                  </Link>
+                </div>
+              ) : (
+                ventasRecientes.map((v) => {
+                  const lineas = v.venta_lineas ?? []
+                  const primera = lineas[0]
+                  const titulo = primera
+                    ? `${primera.producto_nombre}${primera.variante_nombre ? ` (${primera.variante_nombre})` : ""}${primera.cantidad > 1 ? ` × ${primera.cantidad}` : ""}${lineas.length > 1 ? ` + ${lineas.length - 1} más` : ""}`
+                    : v.folio
+                  const saldo = Number(v.saldo_pendiente)
+                  const cierre = saldo > 0
+                    ? `Saldo ${formatCurrency(saldo)}`
+                    : v.forma_pago_inicial ? FORMA_PAGO[v.forma_pago_inicial] : null
+                  return (
+                    <Link key={v.id} href={`/ventas/${v.id}`} className="nx-li">
+                      <div className="nx-avatar" aria-hidden="true">{getInitials(primera?.producto_nombre ?? v.folio)}</div>
+                      <div className="grow">
+                        <div className="nx-li-title">{titulo}</div>
+                        <div className="nx-li-meta">
+                          {v.hora && <span>{v.hora.slice(0, 5)}</span>}
+                          <span className="dash-hide-sm">{v.hora ? " · " : ""}{v.folio}</span>
+                          <span className="dash-hide-sm"> · {v.cliente_nombre || "Mostrador"}</span>
+                          {cierre && <span> · {cierre}</span>}
+                        </div>
+                      </div>
+                      <div className="nx-li-end">
+                        <span className="nx-li-amt">{formatCurrency(Number(v.monto_pagado))}</span>
+                        <EstatusPagoBadge estatus={v.estado_pago} />
+                      </div>
+                    </Link>
+                  )
+                })
+              )}
+            </section>
+
+            {/* ── Últimas transacciones ── */}
+            <section className="nx-list dash-p-txs" aria-labelledby="h-fin">
+              <div className="nx-panel-head">
+                <h2 className="t-h2" id="h-fin">Últimas transacciones</h2>
+                <Link href="/finanzas" className="nx-link">Ver finanzas</Link>
+              </div>
+              {trxRecientesRes.error ? (
+                <PanelError />
+              ) : trxRecientes.length === 0 ? (
+                <div className="dash-note">
+                  <span className="t-small">Sin movimientos registrados todavía.</span>
+                </div>
+              ) : (
+                trxRecientes.map((t) => {
+                  const cat = Array.isArray(t.categorias) ? t.categorias[0] : t.categorias
+                  const automatica = Boolean(t.venta_id)
+                  const meta = [fechaRelativa(t.fecha), cat?.nombre, t.forma_pago ? FORMA_PAGO[t.forma_pago] : null].filter(Boolean).join(" · ")
+                  const monto = formatCurrency(Number(t.monto))
+                  return (
+                    <div key={t.id} className="nx-li" style={{ minHeight: 64 }}>
+                      <span className="nx-catdot" style={{ background: colorCategoria(t.categoria_id, automatica) }} aria-hidden="true" />
+                      <div className="grow">
+                        <div className="nx-li-title">{t.concepto}</div>
+                        <div className="nx-li-meta nx-row gap-8">
+                          <span className="nx-ellipsis">{meta}</span>
+                          {automatica && <span className="nx-tag-auto" style={{ flex: "none" }}>Automática</span>}
+                        </div>
+                      </div>
+                      <span className={`nx-li-amt ${t.tipo === "ingreso" ? "pos" : ""}`}>
+                        {t.tipo === "ingreso" ? `+${monto}` : t.tipo === "gasto" ? `−${monto}` : monto}
+                      </span>
                     </div>
-                    <span className="font-mono" style={{ fontSize: 14, color: trx.tipo === "gasto" ? "var(--error)" : "var(--success)", flexShrink: 0 }}>
-                      {trx.tipo === "gasto" ? "−" : "+"}{formatCurrency(trx.monto)}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </article>
-        )}
+                  )
+                })
+              )}
+            </section>
+          </div>
 
+          <div className="dash-col">
+            {/* ── Stock bajo ── */}
+            <section className="nx-list dash-p-stock" aria-labelledby="h-stock">
+              <div className="nx-panel-head">
+                <h2 className="t-h2" id="h-stock">Stock bajo</h2>
+                <Link href="/inventario" className="nx-link">
+                  {porReponer.length > STOCK_VISIBLE ? `Ver todo (${porReponer.length})` : "Ver todo"}
+                </Link>
+              </div>
+              {productosRes.error ? (
+                <PanelError />
+              ) : porReponer.length === 0 ? (
+                <div className="dash-note">
+                  <span className="nx-badge is-ok">Todo en orden</span>
+                  <span className="t-small">{negocioNuevo ? "Aún no tienes productos registrados" : "Sin productos por reponer"}</span>
+                </div>
+              ) : (
+                porReponer.slice(0, STOCK_VISIBLE).map((p) => {
+                  const agotado = p.stock <= 0
+                  return (
+                    <Link key={p.id} href={`/inventario/${p.id}`} className={`nx-li ${agotado ? "" : "is-low"}`}>
+                      <div className="nx-avatar" aria-hidden="true">{getInitials(p.nombre)}</div>
+                      <div className="grow">
+                        <div className="nx-li-title" style={agotado ? { color: "var(--nx-ink-3)" } : undefined}>{p.nombre}</div>
+                        <div className="nx-li-meta">
+                          Mínimo {p.stock_minimo}
+                          {p.sku && <span className="dash-hide-sm"> · {p.sku}</span>}
+                        </div>
+                      </div>
+                      <span className={`nx-badge ${agotado ? "is-bad" : "is-warn"}`}>
+                        {agotado ? "Agotado" : p.stock === 1 ? "Queda 1" : `Quedan ${p.stock}`}
+                      </span>
+                    </Link>
+                  )
+                })
+              )}
+            </section>
+
+            {/* ── Más vendidos ── */}
+            <section className="nx-card dash-p-top" aria-labelledby="h-top">
+              <div className="nx-panel-head">
+                <h2 className="t-h2" id="h-top">Más vendidos</h2>
+                <span className="t-small">{mes}<span className="dash-hide-sm"> · unidades</span></span>
+              </div>
+              {vendidosRes.error ? (
+                <PanelError />
+              ) : masVendidos.length === 0 ? (
+                <div className="nx-empty dash-empty">
+                  <div className="nx-empty-ic" aria-hidden="true"><LineChart size={26} strokeWidth={1.8} /></div>
+                  <div className="ttl">Sin datos todavía</div>
+                  <div className="txt">Aquí verás tus 3 productos estrella del mes.</div>
+                </div>
+              ) : (
+                masVendidos.map(([id, p], i) => (
+                  <Link key={id} href={`/inventario/${id}`} className="dash-top-row">
+                    <span className="nx-rank" aria-label={`Lugar ${i + 1}`}>{i + 1}</span>
+                    <div className="grow nx-col gap-8">
+                      <div className="nx-row gap-12" style={{ justifyContent: "space-between" }}>
+                        <span className="t-h3">{p.nombre}</span>
+                        <span className="nx-num t-h3" style={{ flex: "none" }}>{p.unidades} uds</span>
+                      </div>
+                      <div className="nx-bar" aria-hidden="true">
+                        <i style={{ width: `${maxUnidades > 0 ? Math.round((p.unidades / maxUnidades) * 100) : 0}%` }} />
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </section>
+          </div>
+        </div>
       </div>
     </>
+  )
+}
+
+function PanelError() {
+  return (
+    <div className="dash-note" role="status">
+      <span className="nx-badge is-bad">No disponible</span>
+      <span className="t-small">No pudimos cargar esta sección. Recarga la página para intentarlo de nuevo.</span>
+    </div>
   )
 }

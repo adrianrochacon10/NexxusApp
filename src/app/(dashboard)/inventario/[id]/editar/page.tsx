@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation"
 import { ProductoForm } from "@/components/inventario/ProductoForm"
-import { Navbar } from "@/components/shared/Navbar"
 import { requireBusinessContext } from "@/server/business/business-context"
 
 export const dynamic = "force-dynamic"
@@ -41,28 +40,26 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
   }))
 
   return (
-    <>
-      <Navbar title="Editar producto" subtitle={producto.nombre} />
-      <div className="page">
-        <ProductoForm
-          categorias={categorias}
-          productoId={id}
-          variantesIniciales={variantesIniciales}
-          defaultValues={{
-            nombre:      producto.nombre,
-            sku:         producto.sku ?? "",
-            descripcion: producto.descripcion ?? "",
-            categoriaId: producto.categoria_id ?? "",
-            precioVenta: producto.precio_venta,
-            precioCosto: producto.precio_costo,
-            stock:       producto.stock,
-            stockMinimo: producto.stock_minimo,
-            estatus:     producto.estatus as "disponible" | "pausado" | "agotado",
-            imagenUrl:   producto.imagen_url ?? "",
-            atributos:   (producto.atributos as Record<string, string>) ?? {},
-          }}
-        />
-      </div>
-    </>
+    <ProductoForm
+      titulo="Editar producto"
+      migas={producto.nombre}
+      cancelHref={`/inventario/${id}`}
+      categorias={categorias}
+      productoId={id}
+      variantesIniciales={variantesIniciales}
+      defaultValues={{
+        nombre:      producto.nombre,
+        sku:         producto.sku ?? "",
+        descripcion: producto.descripcion ?? "",
+        categoriaId: producto.categoria_id ?? "",
+        precioVenta: producto.precio_venta,
+        precioCosto: producto.precio_costo,
+        stock:       producto.stock,
+        stockMinimo: producto.stock_minimo,
+        estatus:     producto.estatus === "pausado" ? "pausado" : "disponible",
+        imagenUrl:   producto.imagen_url ?? "",
+        atributos:   (producto.atributos as Record<string, string>) ?? {},
+      }}
+    />
   )
 }

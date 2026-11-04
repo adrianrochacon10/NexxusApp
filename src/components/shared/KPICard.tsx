@@ -1,40 +1,23 @@
-import { ArrowDownRight, ArrowUpRight } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 
 interface KPICardProps {
   label: string
   value: number
-  trend?: number
-  tone?: "gold" | "success" | "error" | "info"
-  highlighted?: boolean
+  /** Texto de apoyo bajo la cifra (ej. "3 ventas · 4 piezas") */
+  foot?: string
+  /** Muestra signo y color: verde si es positivo, rojo si es negativo */
+  signed?: boolean
 }
 
-const toneMap = {
-  gold:    "var(--accent-gold)",
-  success: "var(--success)",
-  error:   "var(--error)",
-  info:    "var(--info)",
-}
+export function KPICard({ label, value, foot, signed = false }: KPICardProps) {
+  const tone = signed ? (value > 0 ? "pos" : value < 0 ? "neg" : "") : ""
+  const text = signed && value > 0 ? `+${formatCurrency(value)}` : formatCurrency(value)
 
-export function KPICard({ label, value, trend, tone = "gold", highlighted = false }: KPICardProps) {
   return (
-    <article
-      className="surface"
-      style={{
-        padding: 18,
-        borderColor: highlighted ? "rgba(201,168,76,0.3)" : undefined,
-      }}
-    >
-      <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>{label}</div>
-      <div className="font-mono" style={{ marginTop: 14, fontSize: 27 }}>
-        {formatCurrency(value)}
-      </div>
-      {trend !== undefined && (
-        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 6, color: toneMap[tone], fontSize: 13 }}>
-          {trend >= 0 ? <ArrowUpRight size={15} aria-hidden="true" /> : <ArrowDownRight size={15} aria-hidden="true" />}
-          {Math.abs(trend)}% vs. periodo anterior
-        </div>
-      )}
+    <article className="nx-card nx-kpi">
+      <span className="nx-kpi-label">{label}</span>
+      <span className={`nx-kpi-value ${tone}`}>{text}</span>
+      {foot && <span className="nx-kpi-foot">{foot}</span>}
     </article>
   )
 }
