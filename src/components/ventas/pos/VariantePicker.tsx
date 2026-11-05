@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { X } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+import { ProductoFoto } from "./ProductoFoto"
 import { nivelStock, type ProductoPos, type VariantePos } from "./types"
 
 interface VariantePickerProps {
@@ -52,6 +53,12 @@ export function VariantePicker({ producto, enTicket, onPick, onClose }: Variante
       >
         <div className="nx-sheet-grab pos-picker-grab" aria-hidden="true" />
         <div className="nx-modal-head">
+          <ProductoFoto
+            nombre={producto.nombre}
+            imagenUrl={producto.imagen_url}
+            sizes="96px"
+            className="pos-picker-ph"
+          />
           <div className="grow">
             <div className="nx-modal-title" id="pos-picker-title">{producto.nombre}</div>
             <div className="nx-modal-sub nx-num">Elige talla · {formatCurrency(producto.precio_venta)}</div>

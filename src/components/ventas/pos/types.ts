@@ -12,6 +12,7 @@ export interface ProductoPos {
   nombre:       string
   sku:          string | null
   precio_venta: number
+  imagen_url:   string | null
   stock:        number
   stock_minimo: number
   estatus:      string

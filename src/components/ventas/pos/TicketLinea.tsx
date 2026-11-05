@@ -1,5 +1,6 @@
 import { Minus, Plus, Trash2 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+import { ProductoFoto } from "./ProductoFoto"
 import { stockDisponible, type LineaTicket } from "./types"
 
 interface TicketLineaProps {
@@ -17,7 +18,13 @@ export function TicketLinea({ linea, onDelta, onQuitar }: TicketLineaProps) {
   return (
     <div className="pos-line nx-col gap-8">
       <div className="nx-row gap-12">
-        <div className="grow">
+        <ProductoFoto
+          nombre={producto.nombre}
+          imagenUrl={producto.imagen_url}
+          sizes="44px"
+          className="pos-line-ph"
+        />
+        <div className="grow" style={{ minWidth: 0 }}>
           <div className="t-h3 nx-ellipsis">{producto.nombre}</div>
           <div className="t-small nx-num">
             {variante ? `Talla ${variante.nombre} · ` : ""}{formatCurrency(producto.precio_venta)} c/u

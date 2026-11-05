@@ -1,4 +1,5 @@
-import { formatCurrency, getInitials } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
+import { ProductoFoto } from "./ProductoFoto"
 import { nivelStock, stockTotal, type ProductoPos } from "./types"
 
 interface ProductoTileProps {
@@ -30,8 +31,13 @@ export function ProductoTile({ producto, onPick }: ProductoTileProps) {
       onClick={() => onPick(producto)}
       aria-label={`${producto.nombre}, ${precio}${agotado ? ", agotado" : nivel === "low" ? `, quedan ${total}` : ""}`}
     >
+      <ProductoFoto
+        nombre={producto.nombre}
+        imagenUrl={producto.imagen_url}
+        sizes="(max-width: 720px) 56px, 240px"
+        className="pos-tile-ph"
+      />
       <span className="pos-tile-sku nx-mono ink3">{producto.sku ?? " "}</span>
-      <span className="pos-tile-av nx-avatar" aria-hidden="true">{getInitials(producto.nombre)}</span>
       <span className="pos-tile-nm nm t-h3">{producto.nombre}</span>
       <span className="pos-tile-vh t-small">
         {variantesTxt}

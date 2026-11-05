@@ -11,7 +11,7 @@ export default async function NuevaVentaPage() {
   const { data: productos } = await supabase
     .from("productos")
     .select(`
-      id, nombre, sku, precio_venta, stock, stock_minimo, estatus,
+      id, nombre, sku, precio_venta, stock, stock_minimo, estatus, imagen_url,
       categorias:categoria_id (nombre, color),
       producto_variantes (id, nombre, sku, stock, stock_minimo)
     `)
@@ -26,6 +26,7 @@ export default async function NuevaVentaPage() {
       nombre:       p.nombre,
       sku:          p.sku,
       precio_venta: p.precio_venta,
+      imagen_url:   p.imagen_url ?? null,
       stock:        p.stock,
       stock_minimo: p.stock_minimo ?? 0,
       estatus:      p.stock > 0 ? p.estatus : "agotado", // "agotado" se deriva del stock
