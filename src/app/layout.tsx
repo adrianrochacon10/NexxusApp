@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
-import { Cormorant_Garamond, Inter, JetBrains_Mono } from "next/font/google"
-import { ThemeProvider } from "@/components/shared/ThemeProvider"
+import { Inter, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 
 const inter = Inter({
@@ -8,19 +7,15 @@ const inter = Inter({
   variable: "--font-inter",
 })
 
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  variable: "--font-cormorant",
-})
-
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
+  weight: ["500"],
   variable: "--font-jetbrains",
 })
 
 export const metadata: Metadata = {
   title: "Nexxus",
-  description: "Inventario y finanzas empresariales para pequenos negocios.",
+  description: "Punto de venta, inventario y finanzas para pequeños negocios.",
 }
 
 export default function RootLayout({
@@ -29,10 +24,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} ${cormorant.variable} ${jetbrains.variable}`} data-theme="dark" suppressHydrationWarning>
-      <body>
-        <ThemeProvider>{children}</ThemeProvider>
-      </body>
+    // suppressHydrationWarning: algunas extensiones del navegador inyectan atributos
+    // (p. ej. style="cursor:auto") en <html>/<body> antes de hidratar. Solo afecta a estos dos nodos.
+    <html lang="es-MX" className={`${inter.variable} ${jetbrains.variable}`} suppressHydrationWarning>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   )
 }

@@ -1,0 +1,154 @@
+/* ============================================================
+   POS · venta rápida (/ventas/nueva)
+   ≥721 px: catálogo + ticket lateral · ≤720 px: catálogo ⇄ ticket
+   ============================================================ */
+
+.pos-screen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 560px;
+}
+
+/* ---------- catálogo ---------- */
+.pos-catalog { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; padding: 20px 24px 0; }
+.pos-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.pos-search { width: 340px; max-width: 100%; }
+.pos-chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: thin; }
+.pos-chips .nx-chip { flex: none; }
+.pos-results { flex: 1; min-height: 0; overflow: auto; padding: 2px 2px 24px; }
+.pos-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 12px; }
+
+/* tile: rejilla para poder reacomodarlo como fila en móvil */
+.nx-tile.pos-tile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto 1fr;
+  grid-template-areas: "ph ph" "sku sku" "nm nm" "vh vh" "pr bd";
+  column-gap: 8px; row-gap: 4px;
+  width: 100%; color: var(--nx-ink); font: inherit;
+}
+.nx-tile.pos-tile:focus-visible { outline: none; box-shadow: var(--nx-focus); }
+.pos-tile-sku { grid-area: sku; align-self: center; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pos-tile-ph { grid-area: ph; aspect-ratio: 4 / 3; margin-bottom: 6px; border-radius: 10px; }
+.nx-tile.pos-tile.is-out .pos-tile-ph .pos-foto-img { filter: grayscale(1); opacity: .55; }
+
+/* foto del producto (o iniciales si no tiene) */
+.pos-foto { position: relative; display: grid; place-items: center; width: 100%; overflow: hidden; flex: none; background: var(--nx-sunken); color: var(--nx-ink-2); }
+.pos-foto-img { object-fit: cover; }
+.pos-foto-ini { font: 600 18px/1 var(--nx-font); }
+.pos-picker-ph { width: 72px; height: 72px; border-radius: 12px; }
+.pos-picker-ph .pos-foto-ini { font-size: 20px; }
+.pos-line-ph { width: 44px; height: 44px; border-radius: 10px; }
+.pos-line-ph .pos-foto-ini { font-size: 13px; }
+.pos-tile-nm { grid-area: nm; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pos-tile-vh { grid-area: vh; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pos-tile-vh-sku { display: none; }
+.pos-tile-pr { grid-area: pr; align-self: end; margin-top: 6px; white-space: nowrap; }
+.pos-tile-bd { grid-area: bd; align-self: end; justify-self: end; }
+.nx-tile.pos-tile.is-out { color: var(--nx-ink-3); }
+
+/* ---------- ticket ---------- */
+.pos-ticket { display: flex; flex-direction: column; min-height: 0; background: var(--nx-surface); border-left: 1px solid var(--nx-line); }
+.pos-ticket-head { padding: 12px 20px; min-height: 68px; border-bottom: 1px solid var(--nx-line); }
+.pos-back { display: none; }
+.pos-lines { flex: 1; min-height: 120px; overflow: auto; }
+.pos-line { padding: 12px 20px; border-bottom: 1px solid var(--nx-line); }
+.pos-line-limit { font: 600 12.5px/16px var(--nx-font); color: var(--nx-warn-fg); }
+
+.pos-pay { display: flex; flex-direction: column; gap: 12px; padding: 14px 20px 16px; border-top: 1px solid var(--nx-line); background: var(--nx-surface-2); max-height: 72vh; overflow: auto; }
+.pos-formas { display: flex; flex-wrap: wrap; gap: 8px; }
+.pos-formas .nx-chip { flex: 1; justify-content: center; padding: 0 10px; }
+.pos-forma-long { display: none; }
+.pos-cliente { display: grid; grid-template-columns: 1.25fr 1fr; gap: 10px; }
+.pos-checkout { display: flex; flex-direction: column; gap: 12px; position: sticky; bottom: -16px; z-index: 1; margin: 0 -20px -16px; padding: 4px 20px 16px; background: var(--nx-surface-2); }
+.pos-checkout-pieces { display: none; }
+
+.pos-mbar { display: none; }
+
+/* variantes */
+.pos-vgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pos-vbtn { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 64px; padding: 10px 14px; border: 1px solid var(--nx-line-strong); border-radius: 12px; background: var(--nx-surface); cursor: pointer; text-align: left; }
+.pos-vbtn:hover { border-color: var(--nx-accent-line); background: var(--nx-surface-2); }
+.pos-vbtn:focus-visible { outline: none; box-shadow: var(--nx-focus); }
+.pos-vbtn:disabled { background: var(--nx-surface-2); border-style: dashed; cursor: not-allowed; color: var(--nx-ink-3); }
+.pos-vbtn b { font: 700 18px/22px var(--nx-font); overflow-wrap: anywhere; }
+.pos-vbtn-qty { position: absolute; top: 8px; right: 10px; font: 600 12px/16px var(--nx-font); color: var(--nx-accent-hover); }
+.pos-picker-grab { display: none; }
+
+/* aviso */
+.pos-toast-region { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 70; width: min(440px, calc(100vw - 24px)); pointer-events: none; }
+.pos-toast { pointer-events: auto; max-width: none; }
+
+/* ---------- tablet (riel) ---------- */
+@media (max-width: 1100px) {
+  .pos-screen { grid-template-columns: minmax(0, 1fr) 360px; }
+  .pos-catalog { padding: 20px 20px 0; }
+  .pos-search { width: 100%; }
+  .pos-head-spacer { display: none; }
+  .pos-tiles { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); }
+}
+
+/* ---------- móvil ---------- */
+@media (max-width: 720px) {
+  /* alto de la tabbar del shell (56 + 6 + borde + padding inferior) */
+  .pos-screen { --pos-tabbar: calc(63px + max(10px, env(safe-area-inset-bottom))); display: block; height: auto; min-height: 0; }
+  .pos-screen[data-view="catalogo"] .pos-ticket { display: none; }
+  .pos-screen[data-view="ticket"] .pos-catalog { display: none; }
+
+  .pos-catalog { padding: 16px 16px 0; gap: 10px; }
+  .pos-head { gap: 10px; }
+  .pos-chips { margin: 0 -16px; padding: 0 16px 2px; }
+  .pos-results { overflow: visible; margin: 0 -16px; padding: 0 0 32px; }
+  .pos-results > .nx-card { margin: 0 16px; }
+
+  .pos-tiles { display: block; background: var(--nx-surface); border-top: 1px solid var(--nx-line); border-bottom: 1px solid var(--nx-line); }
+  .nx-tile.pos-tile {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    grid-template-areas: "ph nm pr" "ph vh bd";
+    column-gap: 12px; row-gap: 2px; align-items: center;
+    min-height: 72px; padding: 10px 16px;
+    border: 0; border-bottom: 1px solid var(--nx-line); border-radius: 0; box-shadow: none;
+  }
+  .nx-tile.pos-tile:last-child { border-bottom: 0; }
+  .nx-tile.pos-tile.is-out { border-style: solid; }
+  .nx-tile.pos-tile:focus-visible { box-shadow: inset 0 0 0 2px var(--nx-accent); }
+  .pos-tile-sku { display: none; }
+  .pos-tile-ph { width: 52px; height: 52px; aspect-ratio: auto; margin: 0; border-radius: 12px; }
+  .pos-tile-ph .pos-foto-ini { font-size: 14px; }
+  .pos-tile-nm { margin: 0; font: 600 15px/20px var(--nx-font); -webkit-line-clamp: 1; }
+  .pos-tile-vh { font-size: 13px; color: var(--nx-ink-3); }
+  .pos-tile-vh-sku { display: inline; }
+  .pos-tile-pr { margin: 0; align-self: center; justify-self: end; font: 600 15px/20px var(--nx-font); }
+  .pos-tile-bd { align-self: center; }
+
+  .pos-mbar {
+    display: block; position: fixed; left: 0; right: 0; bottom: var(--pos-tabbar); z-index: 29;
+    padding: 12px 16px; background: var(--nx-surface); border-top: 1px solid var(--nx-line);
+  }
+
+  .pos-ticket { border-left: 0; background: var(--nx-surface); padding-bottom: 72px; }
+  .pos-ticket-head { padding: 8px 16px 8px 8px; min-height: 60px; }
+  .pos-back { display: inline-flex; }
+  .pos-lines { flex: none; min-height: 0; overflow: visible; }
+  .pos-line { padding: 12px 16px; }
+  .pos-pay { padding: 16px; max-height: none; overflow: visible; border-top: 0; }
+  .pos-formas { display: grid; grid-template-columns: 1fr 1fr; }
+  .pos-forma-short { display: none; }
+  .pos-forma-long { display: inline; }
+  .pos-cliente { grid-template-columns: 1fr; }
+
+  .pos-checkout {
+    position: fixed; left: 0; right: 0; bottom: var(--pos-tabbar); z-index: 29; margin: 0;
+    gap: 8px; padding: 12px 16px; background: var(--nx-surface); border-top: 1px solid var(--nx-line);
+  }
+  .pos-checkout-pieces { display: inline; }
+
+  .pos-vgrid { gap: 10px; }
+  .pos-picker-grab { display: block; }
+  .pos-picker .nx-modal-head { padding-top: 14px; }
+
+  .pos-toast-region { top: 68px; }
+}

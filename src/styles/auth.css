@@ -1,0 +1,66 @@
+/* Acceso y registro · Fase 7
+   ≥721 px: panel de marca índigo (520 px) + formulario centrado
+   ≤720 px: barra de marca arriba + formulario sobre superficie blanca */
+
+.auth { display: flex; min-height: 100vh; min-height: 100dvh; background: var(--nx-bg); }
+
+/* panel de marca */
+.auth-aside { position: relative; overflow: hidden; width: 520px; flex: none; background: var(--nx-accent); color: #fff; padding: 56px 56px 48px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
+.auth-aside > * { position: relative; }
+.auth-aside .auth-orb { position: absolute; border-radius: 50%; pointer-events: none; }
+.auth-aside .auth-orb.a { right: -120px; top: -120px; width: 380px; height: 380px; background: rgba(255, 255, 255, .07); }
+.auth-aside .auth-orb.b { right: 40px; bottom: -160px; width: 320px; height: 320px; background: rgba(255, 255, 255, .06); }
+.auth-brand { display: flex; align-items: center; gap: 12px; }
+.auth-brand .nx-logo { background: #fff; color: var(--nx-accent); }
+.auth-brand-name { font: 700 22px/28px var(--nx-font); }
+.auth-pitch h2 { font: 700 34px/42px var(--nx-font); letter-spacing: -.02em; margin: 0 0 16px; }
+.auth-pitch p { font: 400 16px/24px var(--nx-font); margin: 0; opacity: .85; max-width: 380px; }
+.auth-perks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; font: 500 15px/22px var(--nx-font); }
+.auth-perks li { display: flex; align-items: center; gap: 12px; }
+.auth-perks svg { flex: none; }
+
+/* barra de marca (móvil) */
+.auth-bar { display: none; align-items: center; gap: 12px; padding: 20px 20px 16px; background: var(--nx-accent); color: #fff; }
+.auth-bar .nx-logo { background: #fff; color: var(--nx-accent); }
+.auth-bar-name { font: 700 20px/26px var(--nx-font); }
+
+/* columna del formulario */
+.auth-main { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 32px; overflow: auto; }
+.auth-body { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 20px; }
+.auth-body h1 { margin: 0; }
+.auth-sub { margin: 4px 0 0; color: var(--nx-ink-2); font: 400 15px/22px var(--nx-font); }
+
+/* conmutador de acceso con enlaces (Iniciar sesión / Crear cuenta) */
+.auth-seg a { flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: var(--nx-tap); border-radius: 9px; font: 600 14px/20px var(--nx-font); color: var(--nx-ink-2); text-decoration: none; padding: 0 10px; }
+.auth-seg a:hover { color: var(--nx-ink); }
+.auth-seg a:focus-visible { outline: none; box-shadow: var(--nx-focus); }
+.auth-seg a[aria-current="page"] { background: var(--nx-surface); color: var(--nx-accent-hover); box-shadow: var(--nx-sh-1); }
+
+.auth-form { display: flex; flex-direction: column; gap: 20px; }
+.auth-fields { display: flex; flex-direction: column; gap: 16px; }
+.auth-label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.auth-alert { flex-direction: column; gap: 2px; }
+
+/* enlace/botón de texto */
+
+
+.auth-spin { animation: auth-spin .8s linear infinite; }
+@keyframes auth-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .auth-spin { animation: none; } }
+
+/* estados de sistema (cargando / error) */
+.auth-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 40px 28px; }
+
+@media (max-width: 1100px) {
+  .auth-aside { width: 420px; padding: 48px 40px 40px; }
+  .auth-pitch h2 { font-size: 28px; line-height: 36px; }
+}
+
+@media (max-width: 720px) {
+  .auth { flex-direction: column; background: var(--nx-surface); }
+  .auth-aside { display: none; }
+  .auth-bar { display: flex; }
+  .auth-main { align-items: flex-start; padding: 24px 20px 32px; overflow: visible; }
+  .auth-body { gap: 18px; }
+  .auth-form { gap: 18px; }
+}
