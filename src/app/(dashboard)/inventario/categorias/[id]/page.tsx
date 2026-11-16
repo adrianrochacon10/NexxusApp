@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, Plus } from "lucide-react"
 import { Navbar } from "@/components/shared/Navbar"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { EliminarCategoriaBoton } from "@/components/inventario/EliminarCategoriaBoton"
 import { InventarioLista, type ProductoListado } from "@/components/inventario/InventarioLista"
 import { formatCurrency } from "@/lib/utils"
 import { requireBusinessContext } from "@/server/business/business-context"
@@ -61,6 +62,7 @@ export default async function CategoriaDetallePage({ params }: { params: Promise
               <ArrowLeft size={20} aria-hidden="true" />
               Inventario
             </Link>
+            <EliminarCategoriaBoton categoria={{ id: categoria.id, nombre: categoria.nombre }} productos={prods.length} />
             <Link href={`/inventario/nuevo?cat=${id}`} className="nx-btn nx-btn-primary">
               <Plus size={20} strokeWidth={2.2} aria-hidden="true" />
               Nuevo producto

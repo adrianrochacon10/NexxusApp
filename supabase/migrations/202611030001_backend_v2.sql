@@ -13,32 +13,43 @@
 --   · Cancelar devuelve stock y registra la devolución en finanzas.
 --   · Fechas en la zona horaria del negocio, no en UTC.
 --
--- ⚠ DESTRUCTIVA: borra las tablas operativas y sus datos (aprobado: datos de
---   prueba). Conserva businesses, business_memberships, perfiles y auth.users.
+-- Conserva los datos: las tablas viejas se mueven al esquema legacy_v1, se
+-- crean las nuevas y al final (sección 6) se copian los datos adaptados a las
+-- reglas nuevas. legacy_v1 queda como respaldo; se borra a mano cuando se
+-- verifique la migración. Conserva businesses, business_memberships, perfiles
+-- y auth.users.
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
--- 0. Limpieza del esquema anterior
+-- 0. Apartar el esquema anterior
 -- ---------------------------------------------------------------------------
-drop table if exists
-  public.transacciones,
-  public.venta_pagos,
-  public.venta_lineas,
-  public.ventas,
-  public.movimientos_stock,
-  public.producto_variantes,
-  public.productos,
-  public.categorias
-  cascade;
+create schema if not exists legacy_v1;
+revoke all on schema legacy_v1 from public, anon, authenticated;
 
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'categorias', 'productos', 'producto_variantes', 'movimientos_stock',
+    'ventas', 'venta_lineas', 'venta_pagos', 'transacciones'
+  ] loop
+    if to_regclass('public.' || t) is not null then
+      execute format('alter table public.%I set schema legacy_v1', t);
+      execute format('revoke all on legacy_v1.%I from anon, authenticated', t);
+    end if;
+  end loop;
+end $$;
+
+-- cascade: quita los triggers viejos que las usaban (ahora en legacy_v1).
 drop function if exists public.next_venta_folio(uuid);
 drop function if exists public.bootstrap_business_defaults(uuid);
-drop function if exists public.assert_product_category_business();
-drop function if exists public.assert_variant_product_business();
-drop function if exists public.assert_stock_movement_business();
-drop function if exists public.assert_sale_line_business();
-drop function if exists public.assert_sale_payment_business();
-drop function if exists public.assert_transaction_business();
+drop function if exists public.assert_product_category_business() cascade;
+drop function if exists public.assert_variant_product_business() cascade;
+drop function if exists public.assert_stock_movement_business() cascade;
+drop function if exists public.assert_sale_line_business() cascade;
+drop function if exists public.assert_sale_payment_business() cascade;
+drop function if exists public.assert_transaction_business() cascade;
 
 create schema if not exists app_private;
 revoke all on schema app_private from public, anon, authenticated;
@@ -1220,12 +1231,214 @@ begin
   end loop;
 end $$;
 
--- Negocios existentes (de antes de esta migración) reciben sus categorías iniciales.
+-- ---------------------------------------------------------------------------
+-- 6. Migración de datos desde legacy_v1
+--    Se conservan los ids, así que todas las referencias siguen válidas.
+--    Los valores que ya no cumplen las reglas nuevas se ajustan (ver notas).
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  hay_legacy boolean := to_regclass('legacy_v1.categorias') is not null;
+begin
+  if not hay_legacy then
+    return;
+  end if;
+
+  -- 6.1 Categorías (nombre 2–60, color #RRGGBB o null)
+  insert into public.categorias (id, business_id, user_id, nombre, tipo, icono, color, atributos_base, created_at, updated_at)
+  select c.id, c.business_id,
+         case when exists (select 1 from auth.users u where u.id = c.user_id) then c.user_id end,
+         left(trim(c.nombre), 60), c.tipo, c.icono,
+         case when c.color ~ '^#[0-9A-Fa-f]{6}$' then c.color end,
+         coalesce(c.atributos_base, '{}'), c.created_at, c.updated_at
+  from legacy_v1.categorias c
+  where exists (select 1 from public.businesses b where b.id = c.business_id);
+
+  -- Categorías de sistema: si el negocio ya tenía "Ventas" (ingreso) o
+  -- "Devoluciones" (gasto), esa se vuelve la de sistema.
+  update public.categorias set clave = 'ventas'
+  where tipo = 'ingreso' and nombre = 'Ventas' and clave is null;
+  update public.categorias set clave = 'devoluciones'
+  where tipo = 'gasto' and nombre = 'Devoluciones' and clave is null;
+
+  -- 6.2 Productos
+  --   'agotado' → 'disponible' (ahora se deriva de stock = 0)
+  --   SKU duplicado sin distinguir mayúsculas → se le agrega sufijo -2, -3…
+  --   categoría que no es de producto → null
+  insert into public.productos (id, business_id, user_id, nombre, descripcion, categoria_id, precio_venta, precio_costo,
+                                stock, stock_minimo, imagen_url, estatus, sku, atributos, created_at, updated_at)
+  select p.id, p.business_id,
+         case when exists (select 1 from auth.users u where u.id = p.user_id) then p.user_id end,
+         left(trim(p.nombre), 120),
+         left(nullif(p.descripcion, ''), 600),
+         (select c.id from public.categorias c where c.id = p.categoria_id and c.business_id = p.business_id and c.tipo = 'producto'),
+         p.precio_venta, p.precio_costo, p.stock, p.stock_minimo, nullif(p.imagen_url, ''),
+         case when p.estatus = 'pausado' then 'pausado' else 'disponible' end,
+         case
+           when p.sku_limpio is null then null
+           when p.rn = 1 then p.sku_limpio
+           else left(p.sku_limpio, 55) || '-' || p.rn
+         end,
+         case when jsonb_typeof(p.atributos) = 'object' then p.atributos else '{}'::jsonb end,
+         p.created_at, p.updated_at
+  from (
+    select lp.*, left(nullif(trim(lp.sku), ''), 60) as sku_limpio,
+           row_number() over (partition by lp.business_id, lower(nullif(trim(lp.sku), '')) order by lp.created_at, lp.id) as rn
+    from legacy_v1.productos lp
+    where exists (select 1 from public.businesses b where b.id = lp.business_id)
+  ) p;
+
+  -- 6.3 Variantes (el trigger recalcula stock y tiene_variantes del producto)
+  insert into public.producto_variantes (id, business_id, producto_id, nombre, sku, atributos, stock, stock_minimo, created_at, updated_at)
+  select v.id, v.business_id, v.producto_id,
+         case when v.rn_nombre = 1 then left(trim(v.nombre), 60) else left(trim(v.nombre), 55) || ' ' || v.rn_nombre end,
+         case
+           when v.sku_limpio is null then null
+           when v.rn_sku = 1 and not exists (
+             select 1 from public.productos p where p.business_id = v.business_id and lower(p.sku) = lower(v.sku_limpio)
+           ) then v.sku_limpio
+           else left(v.sku_limpio, 52) || '-V' || v.rn_sku
+         end,
+         case when jsonb_typeof(v.atributos) = 'object' then v.atributos else '{}'::jsonb end,
+         v.stock, v.stock_minimo, v.created_at, v.updated_at
+  from (
+    select lv.*, left(nullif(trim(lv.sku), ''), 60) as sku_limpio,
+           row_number() over (partition by lv.producto_id, lower(trim(lv.nombre)) order by lv.created_at, lv.id) as rn_nombre,
+           row_number() over (partition by lv.business_id, lower(nullif(trim(lv.sku), '')) order by lv.created_at, lv.id) as rn_sku
+    from legacy_v1.producto_variantes lv
+    where exists (select 1 from public.productos p where p.id = lv.producto_id)
+  ) v;
+
+  -- 6.4 Movimientos de stock: cantidad = |después − antes|; los que no
+  --     movieron nada (antes = después) no caben en la regla nueva y se omiten.
+  insert into public.movimientos_stock (id, business_id, producto_id, variante_id, user_id, tipo, cantidad,
+                                        stock_antes, stock_despues, notas, referencia_tipo, referencia_id, created_at)
+  select m.id, m.business_id, m.producto_id,
+         (select v.id from public.producto_variantes v where v.id = m.variante_id),
+         case when exists (select 1 from auth.users u where u.id = m.user_id) then m.user_id end,
+         m.tipo, abs(m.stock_despues - m.stock_antes), m.stock_antes, m.stock_despues,
+         left(m.notas, 300),
+         case when m.referencia_tipo = 'venta' then 'venta' end,
+         case when m.referencia_tipo = 'venta' then m.referencia_id end,
+         m.created_at
+  from legacy_v1.movimientos_stock m
+  where m.stock_despues <> m.stock_antes
+    and exists (select 1 from public.productos p where p.id = m.producto_id);
+
+  -- 6.5 Ventas
+  --   forma_pago_inicial 'adeudo' → null (ahora "sin pago inicial")
+  --   subtotal = total + descuento; monto_pagado ≤ total
+  --   saldo_pendiente y estado_pago los recalcula el trigger
+  insert into public.ventas (id, business_id, user_id, folio, fecha, hora, subtotal, descuento, total, monto_pagado,
+                             forma_pago_inicial, estatus, cliente_nombre, cliente_telefono, notas, idempotency_key,
+                             cancelada_at, cancelada_por, motivo_cancelacion, created_at, updated_at)
+  select v.id, v.business_id,
+         case when exists (select 1 from auth.users u where u.id = v.user_id) then v.user_id end,
+         v.folio, v.fecha, v.hora::time(0),
+         v.total + v.descuento, v.descuento, v.total, least(v.monto_pagado, v.total),
+         case when v.forma_pago_inicial in ('efectivo', 'transferencia', 'tarjeta') then v.forma_pago_inicial end,
+         v.estatus,
+         case when char_length(trim(v.cliente_nombre)) >= 2 then left(trim(v.cliente_nombre), 120) end,
+         left(v.cliente_telefono, 30), left(v.notas, 500),
+         gen_random_uuid(),
+         case when v.estatus = 'cancelada' then coalesce(v.cancelada_at, v.updated_at) end,
+         case when v.estatus = 'cancelada' and exists (select 1 from auth.users u where u.id = v.cancelada_por) then v.cancelada_por end,
+         case when v.estatus = 'cancelada' then
+           case when char_length(trim(v.motivo_cancelacion)) >= 3 then v.motivo_cancelacion else 'Sin motivo registrado' end
+         end,
+         v.created_at, v.updated_at
+  from legacy_v1.ventas v
+  where exists (select 1 from public.businesses b where b.id = v.business_id);
+
+  -- El folio nuevo (F-00001) continúa la numeración de los viejos (VNT-000001).
+  update public.businesses b
+  set siguiente_folio = greatest(b.siguiente_folio, coalesce((
+    select max(substring(v.folio from '[0-9]+$')::integer) + 1
+    from public.ventas v
+    where v.business_id = b.id and v.folio ~ '[0-9]+$'
+  ), 1));
+
+  -- 6.6 Líneas de venta. costo_unitario no existía: se toma el costo actual
+  --     del producto (mejor aproximación disponible).
+  insert into public.venta_lineas (id, business_id, venta_id, producto_id, variante_id, producto_nombre, variante_nombre,
+                                   cantidad, precio_unitario, costo_unitario, subtotal, created_at)
+  select l.id, l.business_id, l.venta_id,
+         (select p.id from public.productos p where p.id = l.producto_id),
+         (select v.id from public.producto_variantes v where v.id = l.variante_id),
+         l.producto_nombre, l.variante_nombre, l.cantidad, l.precio_unitario,
+         coalesce((select p.precio_costo from public.productos p where p.id = l.producto_id), 0),
+         round(l.cantidad * l.precio_unitario, 2),
+         l.created_at
+  from legacy_v1.venta_lineas l
+  where exists (select 1 from public.ventas v where v.id = l.venta_id);
+
+  -- 6.7 Pagos: el primero de cada venta con forma de pago inicial es el inicial.
+  insert into public.venta_pagos (id, business_id, venta_id, user_id, monto, forma_pago, es_inicial, notas, created_at)
+  select p.id, p.business_id, p.venta_id,
+         case when exists (select 1 from auth.users u where u.id = p.user_id) then p.user_id end,
+         p.monto, p.forma_pago,
+         p.rn = 1 and v.forma_pago_inicial is not null,
+         left(p.notas, 300), p.created_at
+  from (
+    select lp.*, row_number() over (partition by lp.venta_id order by lp.created_at, lp.id) as rn
+    from legacy_v1.venta_pagos lp
+  ) p
+  join public.ventas v on v.id = p.venta_id;
+
+  -- 6.8 Transacciones: se clasifica su origen.
+  --   sin venta → manual · con pago → venta/abono · gasto ligado a venta sin
+  --   pago → devolución · cualquier otro caso → manual (se desliga de la venta)
+  insert into public.transacciones (id, business_id, user_id, fecha, concepto, categoria_id, cantidad, forma_pago, monto,
+                                    tipo, origen, producto_id, venta_id, venta_pago_id, notas, created_at, updated_at)
+  select t.id, t.business_id,
+         case when exists (select 1 from auth.users u where u.id = t.user_id) then t.user_id end,
+         t.fecha,
+         left(case when char_length(trim(t.concepto)) >= 2 then trim(t.concepto) else 'Movimiento' end, 160),
+         (select c.id from public.categorias c where c.id = t.categoria_id and c.business_id = t.business_id and c.tipo in ('gasto', 'ingreso')),
+         t.cantidad, t.forma_pago, t.monto, t.tipo,
+         t.origen,
+         (select p.id from public.productos p where p.id = t.producto_id),
+         case when t.origen = 'manual' then null else t.venta_id_ok end,
+         case when t.origen in ('venta', 'abono') then t.pago_id_ok end,
+         left(t.notas, 400), t.created_at, t.created_at
+  from (
+    select x.*,
+           case
+             when x.venta_id_ok is null then 'manual'
+             when x.pago_id_ok is not null and x.pago_inicial then 'venta'
+             when x.pago_id_ok is not null then 'abono'
+             when x.tipo = 'gasto' then 'devolucion'
+             else 'manual'
+           end as origen
+    from (
+      select lt.*, vt.id as venta_id_ok, vp.es_inicial as pago_inicial,
+             -- un pago solo puede tener una transacción: las demás quedan sin pago
+             case when vp.id is not null
+                   and row_number() over (partition by vp.id order by lt.created_at, lt.id) = 1
+                  then vp.id end as pago_id_ok
+      from legacy_v1.transacciones lt
+      left join public.ventas vt on vt.id = lt.venta_id
+      left join public.venta_pagos vp on vp.id = lt.venta_pago_id and vp.venta_id = vt.id
+      where exists (select 1 from public.businesses b where b.id = lt.business_id)
+    ) x
+  ) t;
+end $$;
+
+-- Categorías iniciales para negocios existentes: completas si no tenían
+-- ninguna; si ya tenían, solo las de sistema (Ventas / Devoluciones).
 do $$
 declare
   b record;
 begin
   for b in select id, created_by from public.businesses loop
-    perform app_private.categorias_iniciales(b.id, b.created_by);
+    if not exists (select 1 from public.categorias c where c.business_id = b.id) then
+      perform app_private.categorias_iniciales(b.id, b.created_by);
+    else
+      insert into public.categorias (business_id, user_id, nombre, tipo, color, clave)
+      values
+        (b.id, b.created_by, 'Ventas', 'ingreso', '#0E8F8F', 'ventas'),
+        (b.id, b.created_by, 'Devoluciones', 'gasto', '#64748B', 'devoluciones')
+      on conflict do nothing;
+    end if;
   end loop;
 end $$;
