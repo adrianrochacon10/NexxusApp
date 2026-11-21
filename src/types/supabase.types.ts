@@ -465,10 +465,13 @@ export type Database = {
           costo_unitario: number
           created_at: string
           id: string
+          precio_lista: number | null
           precio_unitario: number
           producto_id: string | null
+          nota_precio: string | null
           producto_nombre: string
           subtotal: number
+          tipo: string
           variante_id: string | null
           variante_nombre: string | null
           venta_id: string
@@ -479,10 +482,13 @@ export type Database = {
           costo_unitario?: number
           created_at?: string
           id?: string
+          precio_lista?: number | null
           precio_unitario: number
           producto_id?: string | null
+          nota_precio?: string | null
           producto_nombre: string
           subtotal: number
+          tipo?: string
           variante_id?: string | null
           variante_nombre?: string | null
           venta_id: string
@@ -493,10 +499,13 @@ export type Database = {
           costo_unitario?: number
           created_at?: string
           id?: string
+          precio_lista?: number | null
           precio_unitario?: number
           producto_id?: string | null
+          nota_precio?: string | null
           producto_nombre?: string
           subtotal?: number
+          tipo?: string
           variante_id?: string | null
           variante_nombre?: string | null
           venta_id?: string

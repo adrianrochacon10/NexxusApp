@@ -21,7 +21,7 @@ export default async function VentaDetallePage({ params }: { params: Promise<{ i
         id, folio, fecha, hora, total, monto_pagado, saldo_pendiente,
         forma_pago_inicial, estado_pago, estatus, cliente_nombre, cliente_telefono, notas,
         cancelada_at, motivo_cancelacion,
-        venta_lineas (id, producto_nombre, variante_nombre, cantidad, precio_unitario, subtotal)
+        venta_lineas (id, tipo, producto_nombre, variante_nombre, cantidad, precio_unitario, precio_lista, nota_precio, subtotal)
       `)
       .eq("id", id)
       .eq("business_id", business.id)

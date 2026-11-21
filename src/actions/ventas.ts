@@ -27,7 +27,17 @@ export async function registrarVenta(input: NuevaVentaInput): Promise<ActionResu
 
     const resultado = unwrap(await supabase.rpc("registrar_venta", {
       p_business_id: business.id,
-      p_lineas: values.lineas.map((l) => ({ producto_id: l.productoId, variante_id: l.varianteId ?? null, cantidad: l.cantidad })),
+      p_lineas: values.lineas.map((l) =>
+        l.tipo === "libre"
+          ? { tipo: "libre", descripcion: l.descripcion, cantidad: l.cantidad, precio: l.precio }
+          : {
+              producto_id: l.productoId,
+              variante_id: l.varianteId ?? null,
+              cantidad:    l.cantidad,
+              precio:      l.precio ?? null,
+              nota_precio: l.notaPrecio ?? null,
+            },
+      ),
       p_pago: pago,
       p_cliente: values.cliente ? { nombre: values.cliente.nombre, telefono: values.cliente.telefono ?? null } : null,
       p_notas: values.notas ?? "",

@@ -19,7 +19,7 @@ export default async function VentasPage() {
       id, folio, fecha, hora, total, monto_pagado, saldo_pendiente,
       forma_pago_inicial, estado_pago, estatus, cliente_nombre, cliente_telefono, notas,
       motivo_cancelacion,
-      venta_lineas (id, producto_nombre, variante_nombre, cantidad, precio_unitario, subtotal),
+      venta_lineas (id, tipo, producto_nombre, variante_nombre, cantidad, precio_unitario, precio_lista, nota_precio, subtotal),
       venta_pagos (id, monto, forma_pago, notas, created_at)
     `)
     .eq("business_id", business.id)

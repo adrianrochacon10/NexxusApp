@@ -56,6 +56,16 @@
 .pos-lines { flex: 1; min-height: 120px; overflow: auto; }
 .pos-line { padding: 12px 20px; border-bottom: 1px solid var(--nx-line); }
 .pos-line-limit { font: 600 12.5px/16px var(--nx-font); color: var(--nx-warn-fg); }
+.pos-line-lista { margin-right: 6px; color: var(--nx-ink-3); }
+.pos-line-motivo { margin-top: 2px; font: 600 12.5px/16px var(--nx-font); color: var(--nx-accent-hover); }
+.pos-line-precio { gap: 6px; }
+.pos-line-precio.is-on { color: var(--nx-accent-hover); border-color: var(--nx-accent-line); }
+
+/* diálogos de precio y artículo libre */
+.pos-motivos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.pos-motivos .nx-chip { height: 32px; padding: 0 12px; font-size: 13px; }
+.pos-libre-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.pos-head-libre { flex: none; gap: 6px; }
 
 .pos-pay { display: flex; flex-direction: column; gap: 12px; padding: 14px 20px 16px; border-top: 1px solid var(--nx-line); background: var(--nx-surface-2); max-height: 72vh; overflow: auto; }
 .pos-formas { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -85,7 +95,8 @@
 @media (max-width: 1100px) {
   .pos-screen { grid-template-columns: minmax(0, 1fr) 360px; }
   .pos-catalog { padding: 20px 20px 0; }
-  .pos-search { width: 100%; }
+  .pos-search { width: 100%; order: 2; }
+  .pos-head-libre { order: 1; margin-left: auto; }
   .pos-head-spacer { display: none; }
   .pos-tiles { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); }
 }

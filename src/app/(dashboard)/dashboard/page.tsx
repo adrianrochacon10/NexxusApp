@@ -44,7 +44,7 @@ type TrxReciente = {
   categoria_id: string | null
   categorias: { nombre: string } | { nombre: string }[] | null
 }
-type LineaVendida = { producto_id: string; producto_nombre: string; cantidad: number }
+type LineaVendida = { producto_id: string | null; producto_nombre: string; cantidad: number }
 
 /** Color de categoría estable: cat-1 queda para ventas automáticas. */
 function colorCategoria(categoriaId: string | null, automatica: boolean) {
@@ -146,6 +146,7 @@ export default async function DashboardPage() {
   // ── Más vendidos del mes ──────────────────────────────
   const conteo = new Map<string, { nombre: string; unidades: number }>()
   for (const l of (vendidosRes.data ?? []) as unknown as LineaVendida[]) {
+    if (!l.producto_id) continue // artículos sin registrar o productos borrados
     const actual = conteo.get(l.producto_id) ?? { nombre: l.producto_nombre, unidades: 0 }
     actual.unidades += Number(l.cantidad)
     conteo.set(l.producto_id, actual)

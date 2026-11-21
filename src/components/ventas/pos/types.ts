@@ -20,10 +20,45 @@ export interface ProductoPos {
   variantes:    VariantePos[]
 }
 
-export interface LineaTicket {
-  producto: ProductoPos
+/** Ajuste de precio de una línea (descuento, precio especial) con su motivo. */
+export interface AjustePrecio {
+  precio: number
+  motivo: string
+}
+
+export interface LineaInventario {
+  tipo:      "inventario"
+  producto:  ProductoPos
   variante?: VariantePos
-  cantidad: number
+  cantidad:  number
+  ajuste?:   AjustePrecio
+}
+
+/** Artículo que no está en inventario (sobrecargo): no descuenta stock. */
+export interface LineaLibre {
+  tipo:        "libre"
+  id:          string
+  descripcion: string
+  precio:      number
+  cantidad:    number
+}
+
+export type LineaTicket = LineaInventario | LineaLibre
+
+/** Precio unitario que se cobra en la línea. */
+export function precioLinea(l: LineaTicket) {
+  if (l.tipo === "libre") return l.precio
+  return l.ajuste?.precio ?? l.producto.precio_venta
+}
+
+/** Clave estable de una línea del ticket. */
+export function claveDe(l: LineaTicket) {
+  return l.tipo === "libre" ? `libre:${l.id}` : claveLinea(l.producto.id, l.variante?.id)
+}
+
+/** Máximo vendible de la línea (los artículos libres no tienen tope de stock). */
+export function maximoLinea(l: LineaTicket) {
+  return l.tipo === "libre" ? 999 : stockDisponible(l.producto, l.variante)
 }
 
 /** completo = paga todo · parcial = abono + saldo · credito = todo a deber (forma "adeudo") */
@@ -55,6 +90,12 @@ export function nivelStock(stock: number, minimo: number): NivelStock {
 
 export function claveLinea(productoId: string, varianteId?: string) {
   return `${productoId}:${varianteId ?? ""}`
+}
+
+/** Convierte "$1,299.50" o "199" en número (NaN si no es válido). */
+export function parseMonto(v: string) {
+  const limpio = v.replace(/[$,\s]/g, "")
+  return limpio === "" ? NaN : Number(limpio)
 }
 
 export function piezasTexto(n: number) {

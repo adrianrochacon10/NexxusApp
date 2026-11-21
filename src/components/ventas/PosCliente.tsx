@@ -4,7 +4,7 @@ import "@/styles/pos.css"
 
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { AlertCircle, ChevronLeft, Search, ShoppingBag, StickyNote } from "lucide-react"
+import { AlertCircle, ChevronLeft, PackagePlus, Search, ShoppingBag, StickyNote } from "lucide-react"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { formatCurrency } from "@/lib/utils"
 import { registrarVenta } from "@/actions/ventas"
@@ -13,12 +13,20 @@ import { ProductoTile } from "./pos/ProductoTile"
 import { TicketLinea } from "./pos/TicketLinea"
 import { VariantePicker } from "./pos/VariantePicker"
 import { PosToast, type ToastData } from "./pos/PosToast"
+import { PrecioDialog } from "./pos/PrecioDialog"
+import { ArticuloLibreDialog } from "./pos/ArticuloLibreDialog"
 import {
   SIN_CATEGORIA,
+  claveDe,
   claveLinea,
+  maximoLinea,
+  parseMonto,
   piezasTexto,
+  precioLinea,
   stockDisponible,
+  type AjustePrecio,
   type FormaPago,
+  type LineaLibre,
   type LineaTicket,
   type ModoPago,
   type ProductoPos,
@@ -42,10 +50,6 @@ const FORMAS: { value: FormaPago | "credito"; label: string; short: string }[] =
 
 const TODAS = "Todas"
 
-function parseMonto(v: string) {
-  return parseFloat(v.replace(/[$,\s]/g, ""))
-}
-
 export function PosCliente({ productos }: { productos: ProductoPos[] }) {
   const router = useRouter()
   const searchRef = useRef<HTMLInputElement>(null)
@@ -54,6 +58,8 @@ export function PosCliente({ productos }: { productos: ProductoPos[] }) {
   const [query,           setQuery]           = useState("")
   const [categoria,       setCategoria]       = useState(TODAS)
   const [pickerId,        setPickerId]        = useState<string | null>(null)
+  const [precioKey,       setPrecioKey]       = useState<string | null>(null)
+  const [verLibre,        setVerLibre]        = useState(false)
   const [lineas,          setLineas]          = useState<LineaTicket[]>([])
   const [modo,            setModo]            = useState<ModoPago>("completo")
   const [forma,           setForma]           = useState<FormaPago>("efectivo")
@@ -104,13 +110,13 @@ export function PosCliente({ productos }: { productos: ProductoPos[] }) {
   const productoPicker = pickerId ? productos.find((p) => p.id === pickerId) ?? null : null
 
   /* ---------- ticket ---------- */
-  const total  = lineas.reduce((s, l) => s + l.producto.precio_venta * l.cantidad, 0)
+  const total  = lineas.reduce((s, l) => s + Math.round(precioLinea(l) * l.cantidad * 100) / 100, 0)
   const piezas = lineas.reduce((s, l) => s + l.cantidad, 0)
   const vacio  = lineas.length === 0
 
   const cantidadEnTicket = useCallback(
     (productoId: string, varianteId?: string) =>
-      lineas.find((l) => claveLinea(l.producto.id, l.variante?.id) === claveLinea(productoId, varianteId))?.cantidad ?? 0,
+      lineas.find((l) => claveDe(l) === claveLinea(productoId, varianteId))?.cantidad ?? 0,
     [lineas],
   )
 
@@ -130,9 +136,9 @@ export function PosCliente({ productos }: { productos: ProductoPos[] }) {
     setToast((t) => (t?.tone === "warn" ? null : t))
     setLineas((prev) => {
       const key = claveLinea(producto.id, variante?.id)
-      const idx = prev.findIndex((l) => claveLinea(l.producto.id, l.variante?.id) === key)
+      const idx = prev.findIndex((l) => claveDe(l) === key)
       if (idx >= 0) return prev.map((l, i) => (i === idx ? { ...l, cantidad: l.cantidad + 1 } : l))
-      return [...prev, { producto, variante, cantidad: 1 }]
+      return [...prev, { tipo: "inventario", producto, variante, cantidad: 1 }]
     })
   }
 
@@ -144,20 +150,34 @@ export function PosCliente({ productos }: { productos: ProductoPos[] }) {
   function cambiarCantidad(key: string, delta: number) {
     setLineas((prev) =>
       prev.map((l) => {
-        if (claveLinea(l.producto.id, l.variante?.id) !== key) return l
+        if (claveDe(l) !== key) return l
         const nueva = l.cantidad + delta
-        if (nueva < 1 || nueva > stockDisponible(l.producto, l.variante)) return l
+        if (nueva < 1 || nueva > maximoLinea(l)) return l
         return { ...l, cantidad: nueva }
       }),
     )
   }
 
   function quitar(key: string) {
-    setLineas((prev) => prev.filter((l) => claveLinea(l.producto.id, l.variante?.id) !== key))
+    setLineas((prev) => prev.filter((l) => claveDe(l) !== key))
+  }
+
+  function aplicarPrecio(key: string, ajuste: AjustePrecio | undefined) {
+    setLineas((prev) => prev.map((l) => (claveDe(l) === key && l.tipo === "inventario" ? { ...l, ajuste } : l)))
+    setPrecioKey(null)
+  }
+
+  function agregarLibre(linea: LineaLibre) {
+    setLineas((prev) => [...prev, linea])
+    setVerLibre(false)
+    setToast({ tone: "ok", title: "Artículo agregado", text: `${linea.descripcion} · ${formatCurrency(linea.precio * linea.cantidad)}` })
   }
 
   const cerrarPicker = useCallback(() => setPickerId(null), [])
   const cerrarToast  = useCallback(() => setToast(null), [])
+  const cerrarPrecio = useCallback(() => setPrecioKey(null), [])
+  const cerrarLibre  = useCallback(() => setVerLibre(false), [])
+  const lineaPrecio  = precioKey ? lineas.find((l) => claveDe(l) === precioKey) : undefined
 
   /* ---------- cobro ---------- */
   function elegirModo(m: ModoPago) {
@@ -229,11 +249,16 @@ export function PosCliente({ productos }: { productos: ProductoPos[] }) {
       // Precio y stock los valida el servidor; la llave evita cobrar dos veces
       // si hay doble toque o se reintenta tras un error de red.
       const { ventaId, folio } = exigirOk(await registrarVenta({
-        lineas: lineas.map((l) => ({
-          productoId: l.producto.id,
-          varianteId: l.variante?.id,
-          cantidad:   l.cantidad,
-        })),
+        lineas: lineas.map((l) =>
+          l.tipo === "libre"
+            ? { tipo: "libre" as const, descripcion: l.descripcion, cantidad: l.cantidad, precio: l.precio }
+            : {
+                productoId: l.producto.id,
+                varianteId: l.variante?.id,
+                cantidad:   l.cantidad,
+                ...(l.ajuste ? { precio: l.ajuste.precio, notaPrecio: l.ajuste.motivo } : {}),
+              },
+        ),
         pagoInicial,
         cliente: requiereCliente && nombre
           ? { nombre, telefono: clienteTelefono.trim() || undefined }
@@ -290,6 +315,14 @@ export function PosCliente({ productos }: { productos: ProductoPos[] }) {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
+          <button
+            type="button"
+            className="nx-btn nx-btn-secondary pos-head-libre"
+            onClick={() => setVerLibre(true)}
+          >
+            <PackagePlus size={20} aria-hidden="true" />
+            Sin registrar
+          </button>
         </div>
 
         {categorias.length > 2 && (
@@ -389,13 +422,14 @@ export function PosCliente({ productos }: { productos: ProductoPos[] }) {
             </div>
           ) : (
             lineas.map((l) => {
-              const key = claveLinea(l.producto.id, l.variante?.id)
+              const key = claveDe(l)
               return (
                 <TicketLinea
                   key={key}
                   linea={l}
                   onDelta={(d) => cambiarCantidad(key, d)}
                   onQuitar={() => quitar(key)}
+                  onEditarPrecio={l.tipo === "inventario" ? () => setPrecioKey(key) : undefined}
                 />
               )
             })
@@ -562,6 +596,16 @@ export function PosCliente({ productos }: { productos: ProductoPos[] }) {
           onClose={cerrarPicker}
         />
       )}
+
+      {lineaPrecio?.tipo === "inventario" && (
+        <PrecioDialog
+          linea={lineaPrecio}
+          onSave={(ajuste) => aplicarPrecio(claveDe(lineaPrecio), ajuste)}
+          onClose={cerrarPrecio}
+        />
+      )}
+
+      {verLibre && <ArticuloLibreDialog onAdd={agregarLibre} onClose={cerrarLibre} />}
     </div>
   )
 }

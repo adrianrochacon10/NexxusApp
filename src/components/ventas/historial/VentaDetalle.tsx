@@ -43,8 +43,18 @@ export function DetalleProductos({ venta }: { venta: VentaVM }) {
             <div className="grow">
               <div className="t-h3" style={{ fontSize: 14 }}>{l.nombre}</div>
               <div className="t-small nx-num">
-                {l.variante ? `${l.variante} · ` : ""}{l.cantidad} × {formatCurrency(l.precio)}
+                {l.libre ? "Sin registrar · " : ""}
+                {l.variante ? `${l.variante} · ` : ""}{l.cantidad} ×{" "}
+                {l.precioLista != null && (
+                  <s style={{ color: "var(--nx-ink-3)", marginRight: 4 }}>{formatCurrency(l.precioLista)}</s>
+                )}
+                {formatCurrency(l.precio)}
               </div>
+              {l.notaPrecio && (
+                <div className="t-small" style={{ color: "var(--nx-accent-hover)", fontWeight: 600 }}>
+                  Precio ajustado: {l.notaPrecio}
+                </div>
+              )}
             </div>
             <span className="nx-num t-h3" style={{ fontSize: 14 }}>{formatCurrency(l.subtotal)}</span>
           </li>

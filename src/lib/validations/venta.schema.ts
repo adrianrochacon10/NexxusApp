@@ -2,12 +2,32 @@ import { z } from "zod"
 
 const uuid = z.string().uuid("Identificador inválido")
 
-// El precio NO viaja desde el cliente: lo pone la base de datos.
-export const lineaVentaSchema = z.object({
+const cantidad = z.number().int().min(1).max(999)
+const precio   = z.number().min(0, "El precio no puede ser negativo.").max(10_000_000)
+
+// El precio de catálogo lo pone la base de datos. Solo viaja `precio` cuando se
+// vende a otro precio (descuento, precio especial), y entonces el motivo es obligatorio.
+export const lineaInventarioSchema = z.object({
+  tipo:       z.literal("inventario").optional(),
   productoId: uuid,
   varianteId: uuid.optional(),
-  cantidad:   z.number().int().min(1).max(999),
+  cantidad,
+  precio:     precio.optional(),
+  notaPrecio: z.string().trim().max(200).optional(),
+}).strict().refine(
+  (l) => l.precio === undefined || (l.notaPrecio?.length ?? 0) >= 3,
+  { message: "Escribe el motivo del cambio de precio.", path: ["notaPrecio"] },
+)
+
+// Artículo que no está en inventario (sobrecargo): no descuenta stock.
+export const lineaLibreSchema = z.object({
+  tipo:        z.literal("libre"),
+  descripcion: z.string().trim().min(2, "Describe el artículo.").max(120),
+  cantidad,
+  precio,
 }).strict()
+
+export const lineaVentaSchema = z.union([lineaLibreSchema, lineaInventarioSchema])
 
 export const nuevaVentaSchema = z.object({
   lineas: z.array(lineaVentaSchema).min(1, "El ticket está vacío.").max(100),

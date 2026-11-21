@@ -15,6 +15,11 @@ export interface VentaLineaVM {
   cantidad: number
   precio: number
   subtotal: number
+  /** Precio de catálogo cuando se vendió a otro precio. */
+  precioLista: number | null
+  notaPrecio: string | null
+  /** Artículo sin registrar en inventario. */
+  libre: boolean
 }
 
 export interface VentaPagoVM {
@@ -67,6 +72,9 @@ export interface VentaRow {
     cantidad: number
     precio_unitario?: number
     subtotal?: number
+    tipo?: string
+    precio_lista?: number | null
+    nota_precio?: string | null
   }[] | null
   venta_pagos?: {
     id: string
@@ -103,6 +111,9 @@ export function toVentaVM(row: VentaRow): VentaVM {
         cantidad: l.cantidad,
         precio,
         subtotal: l.subtotal != null ? Number(l.subtotal) : precio * l.cantidad,
+        precioLista: l.precio_lista != null ? Number(l.precio_lista) : null,
+        notaPrecio: l.nota_precio ?? null,
+        libre: l.tipo === "libre",
       }
     }),
     pagos: pagos.map((p) => ({
