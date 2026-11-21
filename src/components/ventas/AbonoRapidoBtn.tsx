@@ -1,19 +1,33 @@
 "use client"
 
-import { DollarSign } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { AbonoDialog, type AbonoResultado, type AbonoTarget } from "@/components/ventas/VentaAcciones"
 
-export function AbonoRapidoBtn({ ventaId, saldoPendiente }: { ventaId: string; saldoPendiente: number }) {
-  const router = useRouter()
+/** Botón que abre el modal de abono en el mismo lugar (sin navegar al detalle). */
+export function AbonoRapidoBtn({
+  venta,
+  label = "Registrar abono",
+  className = "nx-btn nx-btn-primary",
+  onRegistrado,
+}: {
+  venta: AbonoTarget
+  label?: string
+  className?: string
+  onRegistrado?: (venta: AbonoTarget, r: AbonoResultado) => void
+}) {
+  const [abierto, setAbierto] = useState(false)
   return (
-    <button
-      type="button"
-      className="button button-primary"
-      onClick={() => router.push(`/ventas/${ventaId}`)}
-      style={{ fontSize: 13, padding: "0 14px", whiteSpace: "nowrap" }}
-    >
-      <DollarSign size={14} aria-hidden="true" />
-      Abonar
-    </button>
+    <>
+      <button type="button" className={className} onClick={() => setAbierto(true)} aria-haspopup="dialog" aria-label={`${label} a ${venta.folio}`}>
+        {label}
+      </button>
+      {abierto && (
+        <AbonoDialog
+          venta={venta}
+          onClose={() => setAbierto(false)}
+          onSuccess={(r) => { setAbierto(false); onRegistrado?.(venta, r) }}
+        />
+      )}
+    </>
   )
 }

@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation"
 import { ProductoForm } from "@/components/inventario/ProductoForm"
-import { Navbar } from "@/components/shared/Navbar"
 import { requireBusinessContext } from "@/server/business/business-context"
 
 export const dynamic = "force-dynamic"
@@ -23,24 +22,16 @@ export default async function NuevoProductoPage({
   if (!categorias || categorias.length === 0) notFound()
 
   const categoriaIdFija = cat && categorias.some((c) => c.id === cat) ? cat : undefined
+  const nombreCategoria = categoriaIdFija ? categorias.find((c) => c.id === categoriaIdFija)?.nombre : undefined
 
   return (
-    <>
-      <Navbar
-        title="Nuevo producto"
-        subtitle={
-          categoriaIdFija
-            ? `Categoría: ${categorias.find((c) => c.id === categoriaIdFija)?.nombre}`
-            : "Crea un producto con precio, stock inicial e imagen."
-        }
-      />
-      <div className="page">
-        <ProductoForm
-          categorias={categorias}
-          categoriaFija={categoriaIdFija}
-          defaultValues={categoriaIdFija ? { categoriaId: categoriaIdFija } : undefined}
-        />
-      </div>
-    </>
+    <ProductoForm
+      titulo="Nuevo producto"
+      migas={nombreCategoria ? `${nombreCategoria} / Nuevo producto` : "Nuevo producto"}
+      cancelHref={categoriaIdFija ? `/inventario/categorias/${categoriaIdFija}` : "/inventario"}
+      categorias={categorias}
+      categoriaFija={categoriaIdFija}
+      defaultValues={categoriaIdFija ? { categoriaId: categoriaIdFija } : undefined}
+    />
   )
 }

@@ -1,23 +1,32 @@
-import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Edit } from "lucide-react"
-import { DataTable } from "@/components/shared/DataTable"
-import { Navbar } from "@/components/shared/Navbar"
+import { Pencil } from "lucide-react"
+import { InventarioToastProvider } from "@/components/inventario/InventarioToast"
+import { MovimientosHistorial, type MovimientoFila } from "@/components/inventario/MovimientosHistorial"
+import { ProductoAcciones } from "@/components/inventario/ProductoAcciones"
+import { ProductoThumb } from "@/components/inventario/ProductoThumb"
 import { StockActualizador } from "@/components/inventario/StockActualizador"
 import { VariantesStockInline } from "@/components/inventario/VariantesStockInline"
-import { ProductoAcciones } from "@/components/inventario/ProductoAcciones"
-import { EstatusBadge } from "@/components/inventario/EstatusBadge"
+import { ESTADO_BADGE, estadoProducto, formatPct, margenPct } from "@/components/inventario/inventario-utils"
 import { formatCurrency } from "@/lib/utils"
 import { requireBusinessContext } from "@/server/business/business-context"
 
 export const dynamic = "force-dynamic"
 
-export default async function ProductoDetallePage({ params }: { params: Promise<{ id: string }> }) {
+const LIMITE_MOVIMIENTOS = 50
+
+export default async function ProductoDetallePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ registrar?: string }>
+}) {
   const { id } = await params
+  const { registrar } = await searchParams
   const { supabase, business } = await requireBusinessContext()
 
-  const [{ data: producto }, { data: variantes }, { data: movimientos }] = await Promise.all([
+  const [{ data: producto }, { data: variantes }, { data: movimientos }, { count: totalMovimientos }] = await Promise.all([
     supabase
       .from("productos")
       .select("id, nombre, descripcion, precio_venta, precio_costo, stock, stock_minimo, imagen_url, estatus, sku, atributos, categoria_id")
@@ -26,132 +35,143 @@ export default async function ProductoDetallePage({ params }: { params: Promise<
       .maybeSingle(),
     supabase
       .from("producto_variantes")
-      .select("id, nombre, sku, atributos, stock, stock_minimo, estatus")
+      .select("id, nombre, sku, atributos, stock, stock_minimo")
       .eq("producto_id", id)
       .eq("business_id", business.id)
       .order("nombre"),
     supabase
       .from("movimientos_stock")
-      .select("id, tipo, cantidad, stock_antes, stock_despues, notas, created_at")
+      .select("id, tipo, cantidad, stock_antes, stock_despues, notas, created_at, variante_id")
       .eq("producto_id", id)
       .eq("business_id", business.id)
       .order("created_at", { ascending: false })
-      .limit(50),
+      .limit(LIMITE_MOVIMIENTOS),
+    supabase
+      .from("movimientos_stock")
+      .select("id", { count: "exact", head: true })
+      .eq("producto_id", id)
+      .eq("business_id", business.id),
   ])
 
   if (!producto) notFound()
 
-  const tieneVariantes = (variantes?.length ?? 0) > 0
+  const { data: categoria } = producto.categoria_id
+    ? await supabase
+        .from("categorias")
+        .select("id, nombre")
+        .eq("id", producto.categoria_id)
+        .eq("business_id", business.id)
+        .maybeSingle()
+    : { data: null }
+
+  const vars = variantes ?? []
+  const tieneVariantes = vars.length > 0
+  const nombreVariante = new Map(vars.map((v) => [v.id, v.nombre]))
+  const filas: MovimientoFila[] = (movimientos ?? []).map((m) => ({
+    id:            m.id,
+    tipo:          m.tipo as MovimientoFila["tipo"], // el CHECK de la tabla limita los valores
+    cantidad:      m.cantidad,
+    stock_antes:   m.stock_antes,
+    stock_despues: m.stock_despues,
+    notas:         m.notas,
+    created_at:    m.created_at,
+    variante:      m.variante_id ? nombreVariante.get(m.variante_id) ?? "Variante eliminada" : null,
+  }))
+
+  const { estado } = estadoProducto(producto, vars)
+  const badge = ESTADO_BADGE[estado]
+  const margen = margenPct(producto.precio_venta, producto.precio_costo)
+  const atributos = Object.entries((producto.atributos as Record<string, string> | null) ?? {}).filter(([, v]) => String(v).trim())
+  const estatus = producto.estatus === "pausado" ? "pausado" : producto.stock > 0 ? "disponible" : "agotado"
 
   return (
-    <>
-      <Navbar title={producto.nombre} subtitle="Detalle operativo, atributos, stock e historial de movimientos." />
-      <div className="page" style={{ display: "grid", gap: 18 }}>
-
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <Link href="/inventario" className="button" style={{ padding: "0 14px" }}>
-            <ArrowLeft size={16} aria-hidden="true" />
-            Inventario
-          </Link>
-          <Link href={`/inventario/${id}/editar`} className="button">
-            <Edit size={15} aria-hidden="true" />
+    <InventarioToastProvider>
+      <header className="inv-head">
+        <ProductoThumb nombre={producto.nombre} imagenUrl={producto.imagen_url} size={72} style={{ borderRadius: 16, fontSize: 20 }} />
+        <div className="grow" style={{ minWidth: 220 }}>
+          <nav className="t-small inv-crumb" aria-label="Ruta">
+            <Link href="/inventario" className="nx-link">Inventario</Link>
+            {categoria && (
+              <>
+                <span aria-hidden="true">/</span>
+                <Link href={`/inventario/categorias/${categoria.id}`} className="nx-link">{categoria.nombre}</Link>
+              </>
+            )}
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">Historial</span>
+          </nav>
+          <h1 className="t-h1" style={{ marginTop: 2 }}>{producto.nombre}</h1>
+          <div className="nx-row gap-12" style={{ marginTop: 6, flexWrap: "wrap" }}>
+            <span className="nx-mono ink3">{producto.sku ?? "Sin SKU"}</span>
+            <span className={`nx-badge ${badge.cls}`}>{badge.label}</span>
+            <span className="t-small">
+              Stock actual <b className="nx-num" style={{ color: "var(--nx-ink)" }}>{producto.stock} uds</b>
+              {tieneVariantes && <> · {vars.map((v) => `${v.nombre}: ${v.stock}`).join(" · ")}</>}
+            </span>
+          </div>
+        </div>
+        <div className="inv-head-actions">
+          <Link href={`/inventario/${id}/editar`} className="nx-btn nx-btn-secondary">
+            <Pencil size={18} aria-hidden="true" />
             Editar producto
           </Link>
+          <StockActualizador
+            productoId={producto.id}
+            productoNombre={producto.nombre}
+            stockActual={producto.stock}
+            variantes={vars.map((v) => ({ id: v.id, nombre: v.nombre, stock: v.stock }))}
+            abrirAlInicio={registrar === "entrada"}
+          />
         </div>
+      </header>
 
-        <section className="surface product-detail-grid">
-          {producto.imagen_url ? (
-            <Image
-              src={producto.imagen_url}
-              alt={producto.nombre}
-              width={280}
-              height={280}
-              style={{ width: "100%", aspectRatio: "1 / 1", borderRadius: 8, objectFit: "cover" }}
-            />
-          ) : (
-            <div style={{ aspectRatio: "1 / 1", borderRadius: 8, background: "var(--surface-3)" }} aria-hidden="true" />
-          )}
+      <div className="page">
+        <div className="inv-detail">
+          <MovimientosHistorial movimientos={filas} limite={LIMITE_MOVIMIENTOS} />
 
-          <div>
-            <EstatusBadge estatus={producto.estatus as "disponible" | "pausado" | "agotado"} />
-            <h2 className="font-display" style={{ margin: "16px 0 6px", fontSize: 36, fontWeight: 500 }}>
-              {producto.nombre}
-            </h2>
-            {producto.descripcion && (
-              <p style={{ color: "var(--text-secondary)", maxWidth: 540, margin: "0 0 16px" }}>{producto.descripcion}</p>
+          <aside className="nx-col gap-16">
+            <section className="nx-card nx-col gap-12" style={{ padding: 20 }} aria-labelledby="h-resumen">
+              <h2 className="t-h2" id="h-resumen">Resumen</h2>
+              <dl className="inv-dl">
+                <dt>Precio de venta</dt><dd>{formatCurrency(producto.precio_venta)}</dd>
+                <dt>Costo</dt><dd>{formatCurrency(producto.precio_costo)}</dd>
+                <dt>Margen</dt><dd className={margen !== null && margen < 0 ? "neg" : ""}>{formatPct(margen)}</dd>
+                <dt>Stock</dt><dd>{producto.stock} uds</dd>
+                {!tieneVariantes && <><dt>Stock mínimo</dt><dd>{producto.stock_minimo} uds</dd></>}
+              </dl>
+              {producto.descripcion && <p className="t-small" style={{ color: "var(--nx-ink-2)" }}>{producto.descripcion}</p>}
+              {atributos.length > 0 && (
+                <div className="nx-row gap-4" style={{ flexWrap: "wrap" }}>
+                  {atributos.map(([k, v]) => <span key={k} className="nx-attr">{k}: {String(v)}</span>)}
+                </div>
+              )}
+            </section>
+
+            {tieneVariantes && (
+              <VariantesStockInline
+                productoId={producto.id}
+                productoNombre={producto.nombre}
+                variantes={vars.map((v) => ({
+                  id:           v.id,
+                  nombre:       v.nombre,
+                  sku:          v.sku,
+                  stock:        v.stock,
+                  stock_minimo: v.stock_minimo,
+                  estatus:      v.stock > 0 ? "disponible" : "agotado",
+                }))}
+              />
             )}
 
-            <div className="metric-grid">
-              <Metric label="Stock total"  value={String(producto.stock)}          warn={producto.stock <= producto.stock_minimo} />
-              <Metric label="Stock mínimo" value={String(producto.stock_minimo)} />
-              <Metric label="Precio venta" value={formatCurrency(producto.precio_venta)} />
-            </div>
-
-            {producto.atributos && Object.keys(producto.atributos as object).length > 0 && (
-              <div style={{ marginTop: 20 }}>
-                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Atributos
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {Object.entries(producto.atributos as Record<string, string>).map(([k, v]) => (
-                    <div key={k} style={{ border: "1px solid var(--border-subtle)", borderRadius: 6, padding: "6px 12px" }}>
-                      <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{k}</div>
-                      <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2 }}>{String(v)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: "grid", gap: 14, alignContent: "start" }}>
-            {!tieneVariantes && <StockActualizador productoId={producto.id} />}
             <ProductoAcciones
               productoId={producto.id}
-              estatusActual={producto.estatus as "disponible" | "pausado" | "agotado"}
+              productoNombre={producto.nombre}
+              estatusActual={estatus}
+              stock={producto.stock}
+              movimientos={totalMovimientos ?? undefined}
             />
-          </div>
-        </section>
-
-        {tieneVariantes && (
-          <section className="surface" style={{ padding: 20, display: "grid", gap: 14 }}>
-            <h2 className="font-display" style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>Variantes</h2>
-            <VariantesStockInline
-              productoId={producto.id}
-              variantes={variantes!.map((v) => ({
-                id:           v.id,
-                nombre:       v.nombre,
-                sku:          v.sku,
-                stock:        v.stock,
-                stock_minimo: v.stock_minimo,
-                estatus:      v.estatus,
-              }))}
-            />
-          </section>
-        )}
-
-        <DataTable
-          data={movimientos ?? []}
-          getRowKey={(row) => row.id}
-          columns={[
-            { key: "fecha",    header: "Fecha",    cell: (row) => new Date(row.created_at).toLocaleDateString("es-MX") },
-            { key: "tipo",     header: "Tipo",     cell: (row) => <span className="badge">{row.tipo}</span> },
-            { key: "cantidad", header: "Cantidad", cell: (row) => <span className="font-mono">{row.cantidad}</span> },
-            { key: "antes",    header: "Antes",    cell: (row) => <span className="font-mono">{row.stock_antes}</span> },
-            { key: "despues",  header: "Después",  cell: (row) => <span className="font-mono">{row.stock_despues}</span> },
-            { key: "notas",    header: "Notas",    cell: (row) => row.notas ?? "—" },
-          ]}
-        />
+          </aside>
+        </div>
       </div>
-    </>
-  )
-}
-
-function Metric({ label, value, warn = false }: { label: string; value: string; warn?: boolean }) {
-  return (
-    <div className="surface elevated" style={{ padding: 14 }}>
-      <div style={{ color: "var(--text-secondary)", fontSize: 12 }}>{label}</div>
-      <div className="font-mono" style={{ marginTop: 8, fontSize: 22, color: warn ? "var(--warning)" : undefined }}>{value}</div>
-    </div>
+    </InventarioToastProvider>
   )
 }

@@ -1,0 +1,146 @@
+/* Finanzas y reportes · Fase 6
+   ≥1101 px: lista + columna lateral de 300 px
+   721–1100 px: lista a todo el ancho, tarjetas laterales debajo en 2 columnas
+   ≤720 px: selector Movimientos/Reportes, tarjeta de balance, filas compactas */
+
+.fz-page { display: flex; flex-direction: column; gap: 20px; }
+
+.fz-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+.fz-mob, .fz-mob-inline, .fz-tabs, .fz-balance { display: none; }
+.fz-desk-inline { display: inline; }
+
+/* ---------- selector de mes y filtros ---------- */
+.fz-mes { display: flex; align-items: center; gap: 4px; margin: -8px 0 -8px -12px; }
+.fz-mes .t-cap { padding: 0 4px; }
+.nx-iconbtn.is-disabled { opacity: .35; cursor: default; }
+.nx-iconbtn.is-disabled:hover { background: transparent; color: var(--nx-ink-2); }
+
+.fz-filtros, .fz-periodos { display: flex; gap: 8px; flex-wrap: wrap; }
+a.nx-chip { text-decoration: none; }
+
+/* pestañas Movimientos / Reportes (móvil) */
+.fz-tabs .nx-seg a { flex: 1; display: flex; align-items: center; justify-content: center; min-height: var(--nx-tap); border-radius: 9px; font: 600 14px/20px var(--nx-font); color: var(--nx-ink-2); text-decoration: none; padding: 0 10px; }
+.fz-tabs .nx-seg a:hover { color: var(--nx-ink); }
+.fz-tabs .nx-seg a:focus-visible { outline: none; box-shadow: var(--nx-focus); }
+.fz-tabs .nx-seg a.is-on { background: var(--nx-surface); color: var(--nx-accent-hover); box-shadow: var(--nx-sh-1); }
+
+/* ---------- KPIs ---------- */
+.fz-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+
+.fz-balance { padding: 14px 16px; }
+.fz-balance-value { font: 700 30px/36px var(--nx-font); letter-spacing: -.02em; }
+.fz-balance-split { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+/* ---------- lista de movimientos ---------- */
+.fz-cols { display: flex; gap: 24px; align-items: flex-start; }
+.fz-main { flex: 1; min-width: 0; }
+.fz-aside { width: 300px; flex: none; display: flex; flex-direction: column; gap: 16px; }
+
+.fz-list { border-radius: 16px; }
+.fz-net { font: 600 13px/18px var(--nx-font); }
+
+.fz-mv { display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 10px 12px 10px 20px; border-bottom: 1px solid var(--nx-line); background: var(--nx-surface); }
+.fz-list > section:last-child > .fz-mv:last-child { border-bottom: 0; }
+.fz-mv-title { font: 600 15px/22px var(--nx-font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fz-mv-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.fz-mv-meta .nx-badge { height: 22px; font-size: 12px; }
+/* Ingreso de una venta cancelada: sigue contando (la devolución lo compensa), solo se atenúa */
+.fz-mv.is-void .fz-mv-title { color: var(--nx-ink-3); }
+.fz-mv-amt { font: 700 16px/22px var(--nx-font); min-width: 120px; text-align: right; white-space: nowrap; flex: none; }
+.fz-mv-amt.is-in { color: var(--nx-ok-fg); }
+.fz-mv-amt.is-out { color: var(--nx-ink); }
+.fz-mv-amt.is-tr { color: var(--nx-ink-2); }
+.fz-mv-actions { display: flex; gap: 2px; flex: none; }
+.fz-mv-more { display: none; flex: none; }
+a.nx-iconbtn { text-decoration: none; }
+
+/* ---------- tarjetas laterales ---------- */
+.fz-side-card { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.fz-catbars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.fz-catbars li { display: flex; flex-direction: column; gap: 6px; }
+
+/* ---------- formulario ---------- */
+.fz-form { max-width: 560px; width: 100%; overflow: hidden; }
+.fz-form-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.fz-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fz-form-foot { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--nx-line); background: var(--nx-surface-2); }
+.fz-textarea { padding: 12px 14px; min-height: 92px; resize: vertical; }
+
+/* ---------- reportes ---------- */
+.fz-report-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 16px; align-items: start; }
+.fz-report-card { padding: 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.fz-donut-wrap { display: flex; flex-direction: column; gap: 16px; }
+.fz-donut { position: relative; width: 220px; height: 220px; margin: 0 auto; }
+.fz-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; text-align: center; padding: 0 48px; }
+.fz-donut-center .lbl { font: 500 12px/16px var(--nx-font); color: var(--nx-ink-2); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fz-donut-center .val { font: 700 20px/26px var(--nx-font); color: var(--nx-ink); }
+
+.fz-legend { display: flex; flex-direction: column; }
+.fz-seg-row { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 4px; width: 100%; border: 0; border-bottom: 1px solid var(--nx-line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; transition: opacity .12s, background .12s; }
+.fz-seg-row:last-child { border-bottom: 0; }
+.fz-seg-row:hover { background: var(--nx-surface-2); }
+.fz-seg-row:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--nx-accent); border-radius: 6px; }
+.fz-seg-row.is-dim { opacity: .4; }
+.fz-legend-pct { min-width: 56px; text-align: right; }
+.fz-legend-amt { min-width: 104px; text-align: right; }
+
+.fz-bars { width: 100%; height: 300px; }
+.fz-bars .recharts-cartesian-axis-tick-value { font-variant-numeric: tabular-nums; }
+
+.fz-weeks { list-style: none; margin: 0; padding: 0; flex-direction: column; gap: 14px; }
+.fz-weeks li { display: flex; flex-direction: column; gap: 6px; }
+.fz-hbar { height: 10px; border-radius: 5px; min-width: 2px; flex: none; }
+
+/* ---------- aviso flotante ---------- */
+.fz-toast-slot { position: fixed; right: 24px; bottom: 24px; z-index: 70; }
+
+/* ---------- tableta ---------- */
+@media (max-width: 1100px) {
+  .fz-cols { flex-direction: column; align-items: stretch; }
+  .fz-aside { width: auto; display: grid; grid-template-columns: 1fr 1fr; }
+  .fz-report-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- móvil ---------- */
+@media (max-width: 720px) {
+  .fz-page { gap: 12px; }
+  .fz-desk, .fz-desk-inline, .fz-kpis-desk { display: none !important; }
+  .fz-mob { display: flex; }
+  .fz-mob-inline { display: inline; }
+  .fz-tabs, .fz-balance { display: block; }
+
+  .fz-mes { margin: -4px 0 -4px -12px; }
+  .fz-kpis { grid-template-columns: 1fr; gap: 10px; }
+  .fz-kpis .nx-kpi-value { font-size: 24px; line-height: 30px; }
+
+  .fz-filtros, .fz-periodos { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 16px; scrollbar-width: none; }
+  .fz-filtros .nx-chip, .fz-periodos .nx-chip { flex: none; }
+
+  .fz-aside { grid-template-columns: 1fr; }
+  .fz-list { margin: 0 -16px; border-radius: 0; border-left: 0; border-right: 0; }
+
+  .fz-mv { gap: 12px; padding: 10px 4px 10px 16px; }
+  .fz-mv-amt { font: 700 15px/20px var(--nx-font); min-width: 0; }
+  .fz-mv-actions { display: none; }
+  .fz-mv-more { display: block; }
+
+  .fz-form-body { padding: 20px 16px; }
+  .fz-form-grid { grid-template-columns: 1fr; }
+  .fz-form-foot { padding: 12px 16px 16px; }
+  .fz-form-submit { flex: 1; min-height: var(--nx-pos); font-size: 17px; border-radius: 12px; }
+  .fz-form-foot .nx-btn-secondary { min-height: var(--nx-pos); }
+
+  .fz-report-card { padding: 16px; gap: 12px; }
+  .fz-donut { width: 180px; height: 180px; }
+  .fz-donut-center { padding: 0 36px; }
+  .fz-legend-amt { min-width: 0; }
+
+  .fz-toast-slot { left: 12px; right: 12px; bottom: auto; top: 68px; }
+  .fz-toast-slot .nx-toast { max-width: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fz-seg-row { transition: none; }
+}

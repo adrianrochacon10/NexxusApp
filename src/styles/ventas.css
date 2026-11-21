@@ -1,0 +1,179 @@
+/* ============================================================
+   Ventas · historial, detalle y cuentas por cobrar
+   Complementa globals.css (tokens --nx-*). Prefijo: .vx-
+   Escritorio/tableta ≥721 px · móvil ≤720 px
+   ============================================================ */
+
+.vx-page { display: flex; flex-direction: column; gap: 20px; }
+
+/* visibilidad por tamaño (no fuerza el display propio del elemento) */
+@media (min-width: 721px) {
+  .vx-only-mob { display: none !important; }
+}
+@media (max-width: 720px) {
+  .vx-only-desk, .vx-only-desk-flex { display: none !important; }
+}
+
+/* ---------- KPIs ---------- */
+.vx-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.vx-kpis-mob { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.vx-kpi-link { color: inherit; transition: border-color .12s; }
+.vx-kpi-link:hover { border-color: var(--nx-accent-line); }
+.vx-kpi-link:focus-visible { outline: none; box-shadow: var(--nx-focus); }
+@media (max-width: 720px) {
+  .vx-kpis { grid-template-columns: 1fr; gap: 12px; }
+}
+
+/* ---------- búsqueda + filtros ---------- */
+.vx-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.vx-search { flex: 1; min-width: 260px; }
+.vx-search input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
+.vx-chips { display: flex; gap: 8px; }
+@media (max-width: 720px) {
+  .vx-toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
+  .vx-search { min-width: 0; }
+  .vx-chips { overflow-x: auto; margin: 0 -16px; padding: 2px 16px 4px; scrollbar-width: none; }
+  .vx-chips::-webkit-scrollbar { display: none; }
+  .vx-chips .nx-chip { flex: none; }
+}
+
+/* ---------- tabla del historial ---------- */
+.vx-table { table-layout: fixed; }
+.vx-table .vx-row { cursor: pointer; }
+.nx-table tr.grp th.vx-grp-cell {
+  display: table-cell; height: 40px; padding: 8px 16px;
+  background: var(--nx-sunken); border-bottom: 1px solid var(--nx-line);
+  font: 600 13px/18px var(--nx-font); color: var(--nx-ink-2);
+  letter-spacing: 0; text-transform: none;
+}
+.vx-grp-cell { text-align: left; }
+.vx-grp-cell > span:last-child { float: right; }
+.vx-table tbody + tbody tr.grp th { border-top: 1px solid var(--nx-line); }
+.vx-table td { color: var(--nx-ink); }
+.vx-table tr.is-cancelled td,
+.vx-table tr.is-cancelled .vx-rowlink { color: var(--nx-ink-3); }
+.vx-rowlink {
+  display: inline-flex; align-items: center; min-height: 28px; padding: 0; margin: 0;
+  border: 0; background: none; color: var(--nx-ink); cursor: pointer; border-radius: 6px;
+}
+.vx-rowlink:hover { color: var(--nx-accent-hover); text-decoration: underline; }
+.vx-rowlink:focus-visible { outline: none; box-shadow: var(--nx-focus); }
+.vx-table .nx-iconbtn:disabled { opacity: .35; cursor: not-allowed; background: transparent; color: var(--nx-ink-2); }
+
+/* ---------- lista móvil ---------- */
+.vx-rowb {
+  width: 100%; border: 0; border-bottom: 1px solid var(--nx-line); background: var(--nx-surface);
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
+  display: flex; gap: 12px; align-items: flex-start; min-height: 64px; padding: 12px 16px;
+}
+.vx-rowb:last-child { border-bottom: 0; }
+.vx-rowb:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--nx-accent); }
+.vx-rowb:active { background: var(--nx-surface-2); }
+.vx-rowb.is-cancelled { background: var(--nx-surface-2); }
+.vx-rowb.is-cancelled .nx-mono,
+.vx-rowb.is-cancelled .vx-rowb-client,
+.vx-rowb.is-cancelled .amt { color: var(--nx-ink-3); }
+.vx-rowb.is-cancelled .amt { text-decoration: line-through; }
+.vx-rowb-client { font-size: 15px; margin-top: 4px; }
+.vx-strike { text-decoration: line-through; }
+
+/* ---------- panel de detalle (drawer / hoja) ---------- */
+.vx-drawer-scrim { position: fixed; inset: 0; z-index: 55; background: rgba(15, 23, 42, .30); }
+.vx-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 56;
+  width: min(440px, 100%); background: var(--nx-surface); box-shadow: var(--nx-sh-pop);
+  display: flex; flex-direction: column;
+}
+.vx-drawer-head { padding: 18px 20px; border-bottom: 1px solid var(--nx-line); }
+.vx-drawer-body { flex: 1; overflow: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; overscroll-behavior: contain; }
+.vx-drawer-foot {
+  padding: 16px 20px; border-top: 1px solid var(--nx-line); background: var(--nx-surface-2);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.vx-drawer-foot .nx-btn { width: 100%; }
+.vx-df-hint { text-align: center; }
+.vx-grab { display: none; }
+
+.vx-lines { list-style: none; margin: 0; padding: 0; }
+.vx-lines > li { padding: 10px 0; border-bottom: 1px solid var(--nx-line); }
+
+.vx-close-44 { width: 44px; height: 44px; margin: -4px -8px 0 0; }
+
+@media (max-width: 720px) {
+  .vx-drawer-scrim { background: rgba(15, 23, 42, .42); }
+  .vx-drawer {
+    top: auto; left: 0; width: 100%; max-height: 92vh; max-height: 92dvh;
+    border-radius: 20px 20px 0 0;
+  }
+  .vx-grab { display: block; width: 40px; height: 4px; border-radius: 4px; background: var(--nx-line-strong); margin: 10px auto 0; flex: none; }
+  .vx-drawer-head { padding: 8px 20px 12px; }
+  .vx-drawer-body { padding: 16px 20px; gap: 16px; }
+  .vx-drawer-foot {
+    flex-direction: row; flex-wrap: wrap; gap: 10px;
+    padding: 12px 20px max(16px, env(safe-area-inset-bottom));
+  }
+  .vx-drawer-foot .nx-btn { width: auto; }
+  .vx-df-cancel { order: 1; }
+  .vx-df-main { order: 2; flex: 1; min-height: var(--nx-pos); font-size: 17px; border-radius: 12px; }
+  .vx-df-hint { order: 3; flex-basis: 100%; }
+}
+
+/* ---------- modales ---------- */
+.vx-sum3 {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+  background: var(--nx-surface-2); border: 1px solid var(--nx-line); border-radius: 12px; padding: 12px;
+}
+.vx-sum3 .t-h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vx-alert-line { font: 500 14px/20px var(--nx-font); }
+.nx-overlay .vx-modal { max-height: calc(100vh - 48px); overflow: auto; }
+
+@media (max-width: 720px) {
+  .nx-overlay .vx-modal { max-height: 92dvh; }
+  .nx-overlay .vx-grab { display: block; }
+  .vx-modal .nx-modal-head { padding-top: 8px; }
+  .vx-foot { justify-content: stretch; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .vx-foot .vx-foot-main { flex: 1; min-height: var(--nx-pos); font-size: 17px; border-radius: 12px; }
+  .vx-foot-stack { flex-direction: column-reverse; gap: 8px; }
+  .vx-foot-stack .nx-btn { width: 100%; }
+  .vx-foot-stack .nx-btn-secondary { background: transparent; border-color: transparent; color: var(--nx-ink-2); }
+}
+
+/* ---------- aviso ---------- */
+.vx-toast-slot { position: fixed; right: 24px; bottom: 24px; z-index: 70; pointer-events: none; }
+.vx-toast-slot .nx-toast { pointer-events: auto; width: min(440px, calc(100vw - 48px)); }
+@media (max-width: 720px) {
+  .vx-toast-slot { left: 12px; right: 12px; top: 68px; bottom: auto; }
+  .vx-toast-slot .nx-toast { width: 100%; max-width: none; }
+}
+
+/* ---------- cuentas por cobrar ---------- */
+.vx-sortbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vx-acc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.vx-acc { display: flex; flex-direction: column; gap: 14px; padding: 20px; min-width: 0; }
+.vx-acc.is-dim { background: var(--nx-surface-2); }
+.vx-acc > .nx-row:last-child { align-items: center; }
+.vx-ini { width: 44px; height: 44px; border-radius: 50%; }
+.vx-due { font: 700 24px/30px var(--nx-font); color: var(--nx-warn-fg); }
+.vx-sec { margin-top: 8px; }
+.vx-inline-link { color: inherit; text-decoration: underline; text-decoration-color: var(--nx-line-strong); text-underline-offset: 2px; }
+.vx-inline-link:hover { color: var(--nx-accent-hover); }
+@media (max-width: 1100px) {
+  .vx-acc-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .vx-acc { padding: 16px; gap: 12px; }
+  .vx-ini { width: 40px; height: 40px; }
+  .vx-due { font-size: 22px; line-height: 28px; }
+}
+
+/* ---------- detalle /ventas/[id] ---------- */
+.vx-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.vx-detail-side { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; }
+.vx-detail-card { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+@media (max-width: 1100px) {
+  .vx-detail-grid { grid-template-columns: 1fr; }
+  .vx-detail-side { position: static; }
+}
+@media (max-width: 720px) {
+  .vx-detail-card { padding: 16px; gap: 16px; }
+}

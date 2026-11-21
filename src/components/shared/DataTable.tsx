@@ -14,8 +14,8 @@ interface DataTableProps<T> {
 
 export function DataTable<T>({ columns, data, getRowKey }: DataTableProps<T>) {
   return (
-    <div className="surface table-wrap">
-      <table>
+    <div className="nx-table-wrap" style={{ overflowX: "auto" }}>
+      <table className="nx-table">
         <thead>
           <tr>
             {columns.map((column) => (

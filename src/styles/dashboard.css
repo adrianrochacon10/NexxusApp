@@ -1,0 +1,54 @@
+/* Dashboard · Fase 3
+   ≥1101 px: KPIs en 4 columnas + dos columnas de paneles
+   721–1100 px: KPIs 2×2 + una columna
+   ≤720 px: igual que tableta, cifras más compactas */
+
+.dash { display: flex; flex-direction: column; gap: 20px; }
+
+.dash-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.dash-kpi-na .nx-kpi-value { color: var(--nx-ink-3); }
+
+.dash-cols { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.dash-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.dash-alert { align-items: center; }
+.dash-alert .nx-btn-secondary { background: #fff; flex: none; }
+
+/* filas clicables dentro de listas */
+a.nx-li { color: inherit; text-decoration: none; transition: background .12s; }
+a.nx-li:hover { background: var(--nx-surface-2); }
+a.nx-li:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--nx-accent); }
+a.nx-li.is-low:hover { background: #FFF6DD; }
+
+.dash-top-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--nx-line); min-height: 64px; }
+.dash-top-row:last-child { border-bottom: 0; }
+a.dash-top-row:hover { background: var(--nx-surface-2); }
+a.dash-top-row:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--nx-accent); }
+.dash-top-row .t-h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.dash-note { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-height: 72px; padding: 12px 16px; }
+.dash-empty { padding: 28px 24px; }
+.dash-empty .nx-empty-ic { width: 56px; height: 56px; }
+.dash-empty .ttl { font-size: 16px; }
+.dash-empty .txt { margin: 0 0 8px; }
+
+@media (max-width: 1100px) {
+  .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  /* una sola columna; el orden sigue al diseño móvil: ventas, stock, más vendidos, transacciones */
+  .dash-cols { display: flex; flex-direction: column; }
+  .dash-col { display: contents; }
+  .dash-p-ventas { order: 1; }
+  .dash-p-stock { order: 2; }
+  .dash-p-top { order: 3; }
+  .dash-p-txs { order: 4; }
+}
+
+@media (max-width: 720px) {
+  .dash { gap: 16px; }
+  .dash-kpis .nx-kpi { padding: 14px; }
+  .dash-kpis .nx-kpi-value { font-size: 21px; line-height: 28px; }
+  .dash-alert { flex-wrap: wrap; }
+  .dash-alert .txt { display: none; }
+  .dash-alert .nx-btn { width: 100%; }
+  .dash-hide-sm { display: none; }
+}

@@ -1,5 +1,6 @@
 import "server-only"
 
+import { redirect } from "next/navigation"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { requireUser } from "@/server/auth/require-user"
 import { AppError } from "@/server/errors/app-error"
@@ -20,6 +21,7 @@ export type BusinessContext = {
   user: {
     id: string
     email?: string
+    nombre?: string
   }
 }
 
@@ -39,12 +41,9 @@ export async function requireBusinessContext(): Promise<BusinessContext> {
     throw new AppError("INTERNAL_ERROR", "No se pudo cargar el negocio activo.", 500, false)
   }
 
+  // Cuenta sin negocio (p. ej. recién confirmó su correo): que cree el suyo.
   if (!membership) {
-    throw new AppError(
-      "FORBIDDEN",
-      "Tu usuario no pertenece a ningun negocio activo.",
-      403,
-    )
+    redirect("/bienvenida")
   }
 
   const { data: business, error: businessError } = await supabase
@@ -70,6 +69,7 @@ export async function requireBusinessContext(): Promise<BusinessContext> {
     user: {
       id: user.id,
       email: user.email,
+      nombre: typeof user.user_metadata?.nombre === "string" ? user.user_metadata.nombre : undefined,
     },
   }
 }
